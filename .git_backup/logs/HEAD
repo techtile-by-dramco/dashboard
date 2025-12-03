@@ -1,0 +1,41 @@
+0000000000000000000000000000000000000000 d746d6c781b91436a6f0a3c2113d81fe2129a339 pi <pi@TECHDASH.(none)> 1747218678 +0100	clone: from https://github.com/wekkes123/TechtileDashboard.git
+d746d6c781b91436a6f0a3c2113d81fe2129a339 d746d6c781b91436a6f0a3c2113d81fe2129a339 pi <pi@TECHDASH.(none)> 1747238445 +0100	checkout: moving from main to main
+d746d6c781b91436a6f0a3c2113d81fe2129a339 d746d6c781b91436a6f0a3c2113d81fe2129a339 git stash <git@stash> 1747238462 +0100	reset: moving to HEAD
+d746d6c781b91436a6f0a3c2113d81fe2129a339 40545c22f8b0f4618f203ce22bc6879210ea60c0 pi <pi@TECHDASH.(none)> 1747238466 +0100	pull: Fast-forward
+40545c22f8b0f4618f203ce22bc6879210ea60c0 25c1d0eadac6d4bbc9e427c66f73bda155327e44 pi <pi@TECHDASH.(none)> 1747238828 +0100	pull: Fast-forward
+25c1d0eadac6d4bbc9e427c66f73bda155327e44 1fe23088daff948b301e399fe4e5e9961468ef37 pi <pi@TECHDASH.(none)> 1747240970 +0100	pull: Fast-forward
+1fe23088daff948b301e399fe4e5e9961468ef37 8adfcd94bb2105774130aba382c2d18b3943e0e6 pi <pi@TECHDASH.(none)> 1747242134 +0100	pull: Fast-forward
+8adfcd94bb2105774130aba382c2d18b3943e0e6 9fb659163b590a9584b7749cfbeb0ab24af6ade1 pi <pi@TECHDASH.(none)> 1747243152 +0100	pull: Fast-forward
+9fb659163b590a9584b7749cfbeb0ab24af6ade1 9fb659163b590a9584b7749cfbeb0ab24af6ade1 git stash <git@stash> 1747243453 +0100	reset: moving to HEAD
+9fb659163b590a9584b7749cfbeb0ab24af6ade1 9fb659163b590a9584b7749cfbeb0ab24af6ade1 git stash <git@stash> 1747302512 +0100	reset: moving to HEAD
+9fb659163b590a9584b7749cfbeb0ab24af6ade1 649a0d89e642611867619ae3718c9e0bee463fa7 pi <pi@TECHDASH.(none)> 1747302517 +0100	pull: Fast-forward
+649a0d89e642611867619ae3718c9e0bee463fa7 943e11484218249196f365eb0c97b80e54afb8dc pi <pi@TECHDASH.(none)> 1747302826 +0100	pull: Fast-forward
+943e11484218249196f365eb0c97b80e54afb8dc 8c6507083e5cf7cd20a4705e3e08a4f86482b838 pi <pi@TECHDASH.(none)> 1747406929 +0100	pull: Fast-forward
+8c6507083e5cf7cd20a4705e3e08a4f86482b838 5d0987c8adcaee3e07a6c2cb762f4e82b7c8d29f pi <pi@TECHDASH.(none)> 1747414882 +0100	pull: Fast-forward
+5d0987c8adcaee3e07a6c2cb762f4e82b7c8d29f 83624cbefb9e08d416b4744fd0226a04afde2f58 pi <pi@TECHDASH.(none)> 1747416517 +0100	pull: Fast-forward
+83624cbefb9e08d416b4744fd0226a04afde2f58 83624cbefb9e08d416b4744fd0226a04afde2f58 git stash <git@stash> 1747418993 +0100	reset: moving to HEAD
+83624cbefb9e08d416b4744fd0226a04afde2f58 c27968674313118812e860a6b02e86b3321a6f1d pi <pi@TECHDASH.(none)> 1747418995 +0100	pull: Fast-forward
+c27968674313118812e860a6b02e86b3321a6f1d 952a66d079ae99d4ae25dadab212fe45b6900f8c pi <pi@TECHDASH.(none)> 1747818046 +0100	pull: Fast-forward
+952a66d079ae99d4ae25dadab212fe45b6900f8c 7d2ace4bae1bf1da89981f487068b7ffbcaefa73 pi <pi@TECHDASH.(none)> 1747818314 +0100	pull: Fast-forward
+7d2ace4bae1bf1da89981f487068b7ffbcaefa73 7d2ace4bae1bf1da89981f487068b7ffbcaefa73 git stash <git@stash> 1747820034 +0100	reset: moving to HEAD
+7d2ace4bae1bf1da89981f487068b7ffbcaefa73 f147318dc3cd0dbc193a6b310703d9fac81ee4d2 pi <pi@TECHDASH.(none)> 1747820036 +0100	pull: Fast-forward
+f147318dc3cd0dbc193a6b310703d9fac81ee4d2 7e8b2e3a9a3ad5c86bf43df870351562393872b8 pi <pi@TECHDASH.(none)> 1747820394 +0100	pull: Fast-forward
+7e8b2e3a9a3ad5c86bf43df870351562393872b8 7e8b2e3a9a3ad5c86bf43df870351562393872b8 git stash <git@stash> 1748263149 +0100	reset: moving to HEAD
+7e8b2e3a9a3ad5c86bf43df870351562393872b8 36b6c6d6a0c66749fa230d8b724e808ff497a7ba pi <pi@TECHDASH.(none)> 1748263152 +0100	pull: Fast-forward
+36b6c6d6a0c66749fa230d8b724e808ff497a7ba 575a8c05686f0cb922905b7b54906bf0e9c08ca5 pi <pi@TECHDASH.(none)> 1748443108 +0100	pull: Fast-forward
+575a8c05686f0cb922905b7b54906bf0e9c08ca5 25955c5f4496b1aba094373c10856e9bf4f178bd pi <pi@TECHDASH.(none)> 1748444677 +0100	pull: Fast-forward
+25955c5f4496b1aba094373c10856e9bf4f178bd 25955c5f4496b1aba094373c10856e9bf4f178bd git stash <git@stash> 1748461241 +0100	reset: moving to HEAD
+25955c5f4496b1aba094373c10856e9bf4f178bd 3c0755be4d082a547bfdbb56b2ffbf2645454332 pi <pi@TECHDASH.(none)> 1748461244 +0100	pull: Fast-forward
+3c0755be4d082a547bfdbb56b2ffbf2645454332 0dab94375c11f604fb20aee5857346c25c10dccb pi <pi@TECHDASH.(none)> 1748512346 +0100	pull: Fast-forward
+0dab94375c11f604fb20aee5857346c25c10dccb e621868690441280647f8803670f326ce7fdc29f pi <pi@TECHDASH.(none)> 1748513004 +0100	pull: Fast-forward
+e621868690441280647f8803670f326ce7fdc29f eb89773974711989ad738ef1320251aaaca7bc7a pi <pi@TECHDASH.(none)> 1748517753 +0100	pull: Fast-forward
+eb89773974711989ad738ef1320251aaaca7bc7a 435589d64a99e5cb0af489ec81b752d469bb2202 pi <pi@TECHDASH.(none)> 1748591888 +0100	pull: Fast-forward
+435589d64a99e5cb0af489ec81b752d469bb2202 ef5e018981ea2439ea9e5f25b1b22cde3fa48c25 pi <pi@TECHDASH.(none)> 1748593265 +0100	pull: Fast-forward
+ef5e018981ea2439ea9e5f25b1b22cde3fa48c25 1a1752b6c023b0fb00f293ab54447b88fe14a344 ramautlyssa <ramaut.lyssa@gmail.com> 1764769527 +0000	commit: Initial commit from Raspberry Pi
+1a1752b6c023b0fb00f293ab54447b88fe14a344 0000000000000000000000000000000000000000 ramautlyssa <ramaut.lyssa@gmail.com> 1764769718 +0000	Branch: renamed refs/heads/main to refs/heads/main
+1a1752b6c023b0fb00f293ab54447b88fe14a344 1a1752b6c023b0fb00f293ab54447b88fe14a344 ramautlyssa <ramaut.lyssa@gmail.com> 1764769718 +0000	Branch: renamed refs/heads/main to refs/heads/main
+1a1752b6c023b0fb00f293ab54447b88fe14a344 1a1752b6c023b0fb00f293ab54447b88fe14a344 ramautlyssa <ramaut.lyssa@gmail.com> 1764769863 +0000	checkout: moving from main to upload
+1a1752b6c023b0fb00f293ab54447b88fe14a344 9ce581ad0e4a1542a37a5872ff9b165804828784 ramautlyssa <ramaut.lyssa@gmail.com> 1764770802 +0000	commit: Cleaned repo: removed big files from Git history
+9ce581ad0e4a1542a37a5872ff9b165804828784 4b8f96bade4f4e32b2a9870e785ed46891b3fd19 ramautlyssa <ramaut.lyssa@gmail.com> 1764770972 +0000	commit: Clean repo
+4b8f96bade4f4e32b2a9870e785ed46891b3fd19 29d9caec631b16e3a6fedd05cf38c39f0554e835 ramautlyssa <ramaut.lyssa@gmail.com> 1764771072 +0000	commit: Clean repo
+29d9caec631b16e3a6fedd05cf38c39f0554e835 045214501ebcb7fca6df4ef6c978a49378cdd027 ramautlyssa <ramaut.lyssa@gmail.com> 1764771159 +0000	commit: Clean repo

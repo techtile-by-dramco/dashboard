@@ -1,0 +1,66 @@
+# -------- different available midspans ---------
+midspans:
+  - id: midspan-001
+    host: 192.108.0.4
+    number_ports: 24
+  - id: midspan-002
+    host: 192.108.0.5
+    number_ports: 24
+  - id: midspan-003
+    host: 192.108.0.6
+    number_ports: 24
+  - id: midspan-004
+    host: 192.108.0.7
+    number_ports: 24
+  - id: midspan-005
+    host: 192.108.0.8
+    number_ports: 12
+  - id: midspan-006
+    host: 192.108.0.9
+    number_ports: 12
+  - id: midspan-007
+    host: 192.108.0.10
+    number_ports: 12
+  - id: midspan-008
+    host: 192.108.0.11
+    number_ports: 12
+  - id: midspan-009
+    host: 192.108.0.12
+    number_ports: 12
+
+
+# Defaults that apply to every midspan
+defaults:
+  poe_ports: 24              # total PoE ports per midspan
+  snmp:
+    version: v3
+    user: admin
+    auth_proto: MD5
+    priv_proto: DES
+    auth_pass_env: LookVogelDomPot229
+    priv_pass_env: LookVogelDomPot229
+    timeout: 1.5
+    retries: 3
+  mqtt:
+    host: 10.128.48.5
+    port: 1883
+    qos: 1
+    retain: false
+    topic_device: midspan/data
+    topic_port: midspan/poeport
+
+# OIDs for all devices ---
+oids:
+    device:
+        max_power_available:   ".1.3.6.1.2.1.105.1.3.1.1.2.1"  #RETURNS: a number
+        oper_status:      ".1.3.6.1.2.1.105.1.3.1.1.3.1"  #RETURNS: a number
+        total_power_consumption:    ".1.3.6.1.2.1.105.1.3.1.1.4.1"  #RETURNS: a number
+        system_voltage_v: ".1.3.6.1.4.1.7428.1.2.2.1.1.2.1" #RETURNS: a number
+        temperature_c:   ".1.3.6.1.4.1.7428.1.2.2.1.1.11.1" #RETURNS: a number
+
+    port:
+        detection_status: ".1.3.6.1.2.1.105.1.1.1.6.1.{port}" #RETURNS: deliveringPower (3), otherFault (6), searching (2) 
+        classification_code: ".1.3.6.1.4.1.7428.1.2.1.1.1.7.1.{port}" #RETURNS: class4 (5),class3 (..), ... (only class 1-4)
+        actual_power_w: ".1.3.6.1.4.1.7428.1.2.1.1.1.3.1.{port}" #RETURN: a number
+        max_power_w: ".1.3.6.1.4.1.7428.1.2.1.1.1.4.1.{port}"  #RETURNS: a number
+        admin_enable: ".1.3.6.1.2.1.105.1.1.1.3.1.{port}"

@@ -1,0 +1,12 @@
+[core]
+	repositoryformatversion = 1
+	filemode = true
+	bare = false
+	logallrefupdates = true
+[branch "main"]
+	vscode-merge-base = origin/main
+[extensions]
+	worktreeConfig = true
+[remote "origin"]
+	url = https://github.com/RamautLyssa/TechtileDashboard.git
+	fetch = +refs/heads/*:refs/remotes/origin/*

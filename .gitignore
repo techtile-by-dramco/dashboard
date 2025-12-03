@@ -1,0 +1,30 @@
+# --- IMPORTANT: PROJECT-SPECIFIC IGNORE RULES ---
+dashboard/build/
+dashboard/node_modules/
+pythonBackend/__pycache__/
+pythonBackend/*.db
+*.db
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+build/
+.cache/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Databases
+*.db
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
