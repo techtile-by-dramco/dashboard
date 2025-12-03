@@ -40,7 +40,7 @@ const DashboardHeader = ({ setOpen,showExtra, setShowExtra, statusJson }) => {
             >
                 {/* dashboard title */}
                 <div style={{ color: "white", fontSize: "20px", textAlign: "center",width: "100%", fontWeight: "bold" }}>
-                    Techtile's Dashboard
+                    - Techtile's Dashboard - 
                 </div>
 
                 {/* experiment message */}

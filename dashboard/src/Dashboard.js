@@ -397,6 +397,22 @@ const Dashboard = ({viewMode, setViewMode}) => {
     }, [serverData]);
 
 
+function getRpiFromHosts(midspanId, port) {
+  for (const [rpiId, entry] of Object.entries(midspanConnections || {})) {
+
+    const m = entry?.midspan ?? entry?.vars?.midspan;
+    const p = entry?.["poe-port"] ?? entry?.vars?.["poe-port"];
+
+    if (!m || !p) continue;
+
+    if (m === midspanId && String(p) === String(port)) {
+      return rpiId;
+    }
+  }
+  return null;
+}
+
+
 function applyResults(results) {
   const now = Date.now();
   console.warn("APPLYRESULTS ENTRY:", results);
@@ -533,7 +549,8 @@ if (r.table === "midspan_poeport") {
         maxPower:{ value: row.maxPower ?? null, timestamp: now },
         voltage: { value: row.voltage ?? null, timestamp: now },
         class:   { value: row.class ?? null, timestamp: now },
-        rpi: row.rpi ?? poePortsDataRef.current[mid]?.[port]?.rpi ?? null,
+        //rpi: row.rpi ?? poePortsDataRef.current[mid]?.[port]?.rpi ?? null,
+        rpi: getRpiFromHosts(mid, port),
         source: { value: "db", timestamp: now },
         last_received: now
       };
@@ -1130,7 +1147,18 @@ if (!batchWorked) {
                 setApiBase(apiBaseStr);
                 const allCells = {};
                 const midspanConfig = data.all.vars.midspans;
-                const midspanConnectionsConfig = data.all.hosts;
+                //const midspanConnectionsConfig = data.all.hosts;
+                const midspanConnectionsConfig = {};
+
+                const rpiGroups = data?.all?.children?.rpis?.children || {};
+                Object.entries(rpiGroups).forEach(([groupName, groupObj]) => {
+                    const hosts = groupObj?.hosts;
+                    if (!hosts || typeof hosts !== "object") return; // skip null / invalid hosts
+                    Object.entries(hosts).forEach(([rpiId, rpiObj]) => {
+                        midspanConnectionsConfig[rpiId] = rpiObj; // flatten
+                    });
+                });
+
                 console.log("[hosts] api_ip:", data?.all?.vars?.api_ip);
                 console.log("[hosts] rpi keys:", Object.keys(midspanConnectionsConfig || {}));
                 // peek at up to 3 host entries to see the shape (flat vs nested under vars)
