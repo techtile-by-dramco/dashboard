@@ -61,27 +61,42 @@ const RpiCell = ({ tile, wallName, updateTile, selectedDisplayField }) => {
     //};
 
 
-    const getBackgroundColor = () => {
-    // If the most recent ping (last_received) is fresh, use the classic colors by status.
-      const FRESH_MS = 5 * 60 * 1000; // same as file constant
-      const ts = tile?.last_received ? (tile.last_received < 1e12 ? tile.last_received * 1000 : tile.last_received) : 0;
-      const isFresh = ts && (Date.now() - ts) <= FRESH_MS;
-      if (isFresh) {
+   const getBackgroundColor = () => {
+
+    //While DB refresh is running → freeze tiles in last known color
+    if (window.__isRefreshing === true) {
         switch (tile.status?.value) {
-          case "working":     return "#dfffd6"; // green
-          case "faulty":      return "#ffd6d6"; // red
-          case "deactivated": return "#f0f0f0"; // grey
-          default:            return "#f0f0f0";
+        case "working":     return "#dfffd6"; // green
+        case "faulty":      return "#ffd6d6"; // red
+        case "deactivated": return "#f0f0f0"; // grey
+        default:            return "#f0f0f0";
         }
-      }
+    }
 
-      // Otherwise fall back to runtime state (DB blue, stale amber, etc.)
-      const runtimeState = getRuntimeState(tile.last_received, tile.data?.source);
-      if (runtimeState !== "empty") return stateToBackground(runtimeState);
+    //ORIGINAL logic below this line
+    const ts = tile?.last_received
+        ? (tile.last_received < 1e12 ? tile.last_received * 1000 : tile.last_received)
+        : 0;
 
-      // No data yet → neutral grey
-      return "#f0f0f0";
+    const isFresh = ts && (Date.now() - ts) <= FRESH_MS;
+
+    if (isFresh) {
+        switch (tile.status?.value) {
+        case "working":     return "#dfffd6"; // green
+        case "faulty":      return "#ffd6d6"; // red
+        case "deactivated": return "#f0f0f0"; // grey
+        default:            return "#f0f0f0";
+        }
+    }
+
+    const runtimeState = getRuntimeState(tile.last_received, tile.data?.source);
+    if (runtimeState !== "empty") {
+        return stateToBackground(runtimeState); // stale/yellow logic
+    }
+
+    return "#f0f0f0";
     };
+
       // Get status text for display
     const getStatusText = () => {
         switch (tile.status.value) {

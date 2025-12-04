@@ -31,6 +31,7 @@ export function generateMockData(handlers = {}) {
         "rpi/data",
         "midspan/data",
         "midspan/poeport",
+        "midspan/poeport/state", 
         "pdu/data",
         "server/data",
         "experiment",
@@ -48,18 +49,27 @@ export function generateMockData(handlers = {}) {
         });
     });
 
-    client.on("message", (topic, message) => {
+   client.on("message", (topic, message) => {
         try {
             const data = JSON.parse(message.toString());
-            if(topic === "pdu/port") {
-                console.log(data)
+
+            let matched = false;
+            for (const key of Object.keys(handlers)) {
+
+                // MQTT-style prefix matching
+                const base = key.replace("/#", "");
+
+                if (topic.startsWith(base)) {
+                    handlers[key](data, topic);
+                    matched = true;
+                    break;
+                }
             }
-            const handler = handlers[topic];
-            if (handler) {
-                handler(data);
-            } else {
-                console.warn(`No handler for topic: ${topic}`);
+
+            if (!matched) {
+                console.warn(`No handler matched for topic: ${topic}`);
             }
+
         } catch (error) {
             console.error("Error parsing message:", error);
         }

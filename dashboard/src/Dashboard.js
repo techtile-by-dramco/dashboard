@@ -19,6 +19,7 @@ import WallWest from './Views/WallWest';  // Import the Ceiling view
 
 
 
+
 const { Header, Content, Footer } = Layout;
 
 const STALE_MS = 5 * 60 * 1000; // adjust if you like
@@ -319,6 +320,7 @@ const Dashboard = ({viewMode, setViewMode}) => {
         status: "inactive",
         message: ""
     });
+    const [midspanPortCountsState, setMidspanPortCountsState] = useState({});
 
     const [selectedDisplayField, setSelectedDisplayField] = useState("cpuTemp");
     const [preloadComplete, setPreloadComplete] = useState(false);
@@ -358,10 +360,18 @@ const Dashboard = ({viewMode, setViewMode}) => {
   };
 
 
+    const [isRefreshingGlobal, setIsRefreshingGlobal] = useState(false);
+    useEffect(() => {
+      window.__isRefreshing = isRefreshingGlobal;
+    }, [isRefreshingGlobal]);
+
+
      useEffect(() => {
-       const filteredTiles = filterTilesByViewMode();
-       setVisibleItems(filteredTiles.map(([tileId]) => tileId));
-     }, [viewMode, tiles]);
+      if (window.__isRefreshing) return;  
+
+      const filteredTiles = filterTilesByViewMode();
+      setVisibleItems(filteredTiles.map(([tileId]) => tileId));
+    }, [viewMode, tiles]);
 
    /* useEffect(() => {
       // Mock fetching tiles data or use actual data from state
@@ -550,7 +560,10 @@ if (r.table === "midspan_poeport") {
         voltage: { value: row.voltage ?? null, timestamp: now },
         class:   { value: row.class ?? null, timestamp: now },
         //rpi: row.rpi ?? poePortsDataRef.current[mid]?.[port]?.rpi ?? null,
-        rpi: getRpiFromHosts(mid, port),
+        //rpi: getRpiFromHosts(mid, port),
+        rpi: getRpiFromHosts(mid, port) 
+        ?? poePortsDataRef.current[mid]?.[port]?.rpi 
+        ?? null,
         source: { value: "db", timestamp: now },
         last_received: now
       };
@@ -612,10 +625,13 @@ try {
 
 
 
-async function preloadEverythingFromDb12({
+/*async function preloadEverythingFromDb12({
   rpiIds = [],
   midspanIds = [],
-  poePortCount = 24,
+  pduIds = [],
+  portCounts = {},       // ✔ ADD THIS
+  poePortCount = 24,     // fallback
+  pduPortCount = 8,
   apiBase = "",
 }) {
   try {
@@ -644,7 +660,8 @@ async function preloadEverythingFromDb12({
 
     // --- Midspan port rows (per port) ---
     midspanIds.forEach(id => {
-      for (let port = 1; port <= poePortCount; port++) {
+      const count = (portCounts && portCounts[mid]) || poePortCount;
+      for (let port = 1; port <= count; port++) {
         queries.push({
           table: "midspan_poeport",
           filters: { id, port: String(port) }
@@ -674,12 +691,14 @@ async function preloadEverythingFromDb12({
   }
 }
 
-
+*/
 async function preloadEverythingFromDb({
   rpiIds = [],
   midspanIds = [],
   pduIds = [],
-  poePortCount = 24,
+  portCounts = {},       // ✔ ADD THIS
+  poePortCount = 24,     // fallback
+  pduPortCount = 8,
   apiBase = "",
 }) {
   try {
@@ -746,8 +765,8 @@ async function preloadEverythingFromDb({
     // ------------------- 3) Fetch PoE ports per midspan -------------------
     for (const mid of midspanIds) {
      const MidspanResults = [];
-     for (let port = 1; port <= poePortCount; port++) {
-        try {
+     const count = portCounts[mid] || poePortCount;
+     for (let port = 1; port <= count; port++) {        try {
           const p = new URLSearchParams({ id: mid, port: String(port) });
           const url = `${base}/db/latest?table=midspan_poeport&${p.toString()}`;
           //console.log("[preload] starting fetch for midspan-poeport:", mid, port, "url:", url);
@@ -787,7 +806,7 @@ async function preloadEverythingFromDb({
 }
 
 
-
+/*
 async function preloadEverythingFromDb1({
   rpiIds = [],
   apiBase = "",
@@ -822,7 +841,8 @@ async function preloadEverythingFromDb1({
     console.error("[preload rpi] ERROR:", err);
   }
 }
-
+*/
+/*
 async function preloadEverythingFromDb2({ rpiIds, midspanIds, pduIds, poePortCount = 8, pduPortCount = 8, apiBase ="" }) {
         // POST a small slice of queries and return its results
         async function postBatch(url, chunk, signal) {
@@ -1089,9 +1109,9 @@ if (!batchWorked) {
         } catch (e) {
           console.warn("DB preload failed", e);
         }
-      }
+      }*/
 
-    const normalizeTileId = (id) => {
+const normalizeTileId = (id) => {
         const match = id.match(/^([A-Z])(\d+)$/i);
         if (!match) return id;
 
@@ -1099,7 +1119,7 @@ if (!batchWorked) {
         return `${letter.toUpperCase()}${number.padStart(2, "0")}`;
     };
 
-    const getTilesByCategory = (categoryType, filterFn = () => true) => {
+const getTilesByCategory = (categoryType, filterFn = () => true) => {
         const categorizedTiles = {};
 
         Object.entries(tiles).forEach(([tileId, tileData]) => {
@@ -1147,16 +1167,16 @@ if (!batchWorked) {
                 setApiBase(apiBaseStr);
                 const allCells = {};
                 const midspanConfig = data.all.vars.midspans;
-                //const midspanConnectionsConfig = data.all.hosts;
-                const midspanConnectionsConfig = {};
 
-                const rpiGroups = data?.all?.children?.rpis?.children || {};
-                Object.entries(rpiGroups).forEach(([groupName, groupObj]) => {
-                    const hosts = groupObj?.hosts;
-                    if (!hosts || typeof hosts !== "object") return; // skip null / invalid hosts
-                    Object.entries(hosts).forEach(([rpiId, rpiObj]) => {
-                        midspanConnectionsConfig[rpiId] = rpiObj; // flatten
-                    });
+                const midspanPortCounts = {};
+                for (const [midId, cfg] of Object.entries(midspanConfig || {})) {
+                    midspanPortCounts[midId] = cfg["nr-ports"] || 24;
+                }
+                setMidspanPortCountsState(midspanPortCounts);
+                const midspanConnectionsConfig = {};
+                const hostsFlat = data?.all?.hosts || {};
+                Object.entries(hostsFlat).forEach(([rpiId, rpiObj]) => {
+                  midspanConnectionsConfig[rpiId] = rpiObj;
                 });
 
                 console.log("[hosts] api_ip:", data?.all?.vars?.api_ip);
@@ -1181,7 +1201,7 @@ if (!batchWorked) {
 
                 // Initialize PoE ports from hosts so each port has its rpi before DB preload
                 const midspanPortsConfig = {};
-                Object.entries(midspanConnectionsConfig || {}).forEach(([rpiId, rpiData]) => {
+                /*Object.entries(midspanConnectionsConfig || {}).forEach(([rpiId, rpiData]) => {
                   const poeInfo = rpiData["poe-port"];
                   const midspanInfo = rpiData["midspan"];
                   if (!poeInfo || !midspanInfo) return;
@@ -1193,7 +1213,21 @@ if (!batchWorked) {
                     voltage: "N/A",
                     rpi: rpiId
                   };
-                });
+                });*/
+
+                Object.entries(midspanConnectionsConfig || {}).forEach(([rpiId, rpiData]) => {
+                const poeInfo = rpiData?.["poe-port"] ?? rpiData?.vars?.["poe-port"];
+                const midspanInfo = rpiData?.["midspan"]   ?? rpiData?.vars?.["midspan"];
+                if (!poeInfo || !midspanInfo) return;
+
+                if (!midspanPortsConfig[midspanInfo]) midspanPortsConfig[midspanInfo] = {};
+                midspanPortsConfig[midspanInfo][poeInfo] = {
+                  power: "N/A",
+                  status: "unknown",
+                  voltage: "N/A",
+                  rpi: rpiId
+                };
+              });
                 console.log("[midspanPortsConfig] built:", midspanPortsConfig);
                 dispatchPoePorts({
                   type: 'INITIALIZE_POE_PORTS',
@@ -1341,7 +1375,7 @@ try {
 }
 
 try {
-  const cached = localStorage.getItem("poePortCache");
+  /*const cached = localStorage.getItem("poePortCache");
   if (cached) {
     const items = JSON.parse(cached)?.items || [];
     items.forEach((entry) => {
@@ -1349,7 +1383,24 @@ try {
       updatePoePort(id, port, data);
     });
     console.warn("[cache] restored", items.length, "poe ports from cache");
-  }
+  }*/
+
+    const cached = localStorage.getItem("poePortCache");
+    if (cached) {
+      const items = JSON.parse(cached)?.items || [];
+      items.forEach((entry) => {
+        const { id, port, data } = entry;
+        const rpiFromHosts = getRpiFromHosts(id, port);
+        updatePoePort(id, port, {
+          ...data,
+          // als cache geen rpi had, herstel hem uit hosts of behoud bestaande
+          rpi: data?.rpi ?? rpiFromHosts ?? poePortsDataRef.current[id]?.[port]?.rpi ?? null
+        });
+      });
+      console.warn("[cache] restored", items.length, "poe ports from cache (with rpi fallback)");
+    }
+
+
 } catch (e) {
   console.warn("[cache] failed to restore poe ports", e);
 }
@@ -1411,12 +1462,13 @@ try {
                 console.log("[preload] rpiIds:", rpiIds);
                 console.log("[preload] midspanIds:", midspanIds);
                 console.log("[preload] apiBase:", apiBaseStr);
-                // Kick off preload (set port counts if your hardware differs)
+                window.__isRefreshing = true;
                 await preloadEverythingFromDb({
                     rpiIds,
                     midspanIds,
                     pduIds,
-                    poePortCount: 24,
+                    portCounts: midspanPortCounts,     
+                    poePortCount: 24,                                    
                     pduPortCount: 8,
                     apiBase: apiBaseStr
                 });
@@ -1722,6 +1774,30 @@ try {
         }
     };
 
+    const handlePOEPortStatusMessage = (data) => {
+        if (!data || typeof data !== "object") return;
+
+        const midspanId = data.id;
+        const portId = data.port;
+        const status = data.status;   // "active" or "inactive"
+        const timestamp = Date.now();
+
+        // Direct normalized structure (no wrapping in {value,timestamp} for status)
+        const update = {
+            status: { value: status, timestamp },
+            power: { value: data.power ?? null, timestamp },
+            voltage: { value: data.voltage ?? null, timestamp },
+            maxPower: { value: data.maxPower ?? null, timestamp },
+            class: { value: data.class ?? null, timestamp },
+            source: { value: "live", timestamp }
+        };
+
+        updatePoePort(midspanId, portId, update);
+
+        console.log(`[LIVE UPDATE] POE ${midspanId}:${portId}`, update);
+    };
+
+
     const handlePDUMessage = async (data) => {
         try {
             if (!data || typeof data !== "object") {
@@ -1849,21 +1925,30 @@ useEffect(() => {
   let cancelled = false;
 
   const doRefresh = async () => {
+
     if (isRefreshing || cancelled) return;
+    setIsRefreshingGlobal(true);
     isRefreshing = true;
+
     try {
       const rpiIds = Object.keys(rpiCells || {});
       const midspanIds = Object.keys(midspans || {});
+      window.__isRefreshing = true;     
       await preloadEverythingFromDb({
-        rpiIds,
-        apiBase,
-        midspanIds,
-        poePortCount: 24
+          rpiIds,
+          midspanIds,
+          portCounts: midspanPortCountsState,
+          poePortCount: 24,
+          apiBase
       });
+
+
     } catch (err) {
       console.error("[refresh] ERROR", err);
     } finally {
       isRefreshing = false;
+      setIsRefreshingGlobal(false);   // <--- Added
+      window.__isRefreshing = false;
     }
   };
 
@@ -1930,6 +2015,9 @@ useEffect(() => {
             //"midspan/poeport": (data) => {
             //    Promise.resolve().then(() => handlePOEPortMessage(data));
             //},
+
+             "midspan/poeport/state/#": (data) => 
+              Promise.resolve().then(() => handlePOEPortStatusMessage(data)),
 
             "midspan/data": () => {},
             "midspan/poeport": () => {},
@@ -2233,3 +2321,6 @@ export const GraphContext = createContext({
 export const useGraph = () => useContext(GraphContext);
 
 export default Dashboard;
+
+
+ 
