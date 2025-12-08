@@ -37,6 +37,7 @@ async function getApiBase() {
 
 export default async function pingRpi(hostname) {
   try {
+    console.log(`[PING] Attempting to ping RPI with hostname: ${hostname}`);  // Log the hostname being pinged
     const apiBase = await getApiBase();
     const url = apiBase
       ? `${apiBase}/ping/${encodeURIComponent(hostname)}`

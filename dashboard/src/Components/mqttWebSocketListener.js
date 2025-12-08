@@ -35,7 +35,8 @@ export function generateMockData(handlers = {}) {
         "pdu/data",
         "server/data",
         "experiment",
-        "pdu/port"
+        "pdu/port",
+        "midspan/poeport/singlePortData"
     ];
 
     client.on("connect", () => {

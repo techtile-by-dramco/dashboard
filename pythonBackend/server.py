@@ -147,6 +147,7 @@ def poweroff(device_id, shutdown_grace_s=20):
     if not midspan_id:
         print(f"[POWER OFF] No MIDSPAN mapping for {device_id}, cannot power on.")
         return
+    print(f"[POWER OFF] Midspan_id {midspan_id} — Poerport_id {poe_port}")
     publish_midspan_port(midspan_id, poe_port, "off")
 
 def poweron(device_id, cycle_off_s=3):
@@ -156,15 +157,26 @@ def poweron(device_id, cycle_off_s=3):
         return
 
     if device_id in LAST_SHUTDOWN:
+        print(f"[POWER ON] Midspan_id {midspan_id} — Poerport_id {poe_port}")
         print(f"[POWER ON] Poweron after shutdown for {device_id}.")
         publish_midspan_port(midspan_id, poe_port, "off")
         time.sleep(cycle_off_s)
         publish_midspan_port(midspan_id, poe_port, "on")
     else:
+        print(f"[POWER ON] Midspan_id {midspan_id} — Poerport_id {poe_port}")
         print(f"[POWER ON] Poweron without shutdown for {device_id} — just turning PDU on.")
+
         publish_midspan_port(midspan_id, poe_port, "on")
 
     LAST_SHUTDOWN.pop(device_id, None)
+
+def getSNMP(midspan_id, poeport):
+    print(f"[getSNMP] Midspan_id {midspan_id} — Poerport_id {poeport}")
+    publish_midspan_port(midspan_id, poeport, "get")
+
+
+def setSNMP(midspan_id, poerport):
+    publish_midspan_port(midspan_id, poe_port, "set")
 
 
 # MQTT handlers
@@ -340,6 +352,23 @@ def send_control_command(device_id, command):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/control/<midspan_id>/<poeport>/<command>", methods=["POST"])
+def send_get_command(midspan_id, poeport, command):
+    try:
+        if command not in ["get", "set"]:
+            return jsonify({"error": "Unsupported command"}), 400
+
+        if command == "get":
+            threading.Thread(target=getSNMP, args=(midspan_id, poeport,), daemon=True).start()
+            return jsonify({"success": True, "mode": "get"}), 200
+
+        if command == "set":
+            threading.Thread(target=setSNMP, args=(midspan_id, poeport,), daemon=True).start()
+            return jsonify({"success": True, "mode": "set"}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/db/latest", methods=["GET"])
 def db_latest():
     try:
@@ -485,4 +514,4 @@ def add_cors_headers(resp):
 if __name__ == "__main__":
     #update_api_ip_in_yaml(get_lan_ip(), "/home/pi/TechtileDashboard/build/hosts.yaml")
     update_api_ip_in_yaml(get_lan_ip(), HOSTS_PATH)
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5001)

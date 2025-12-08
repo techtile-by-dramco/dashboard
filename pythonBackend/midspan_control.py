@@ -176,6 +176,70 @@ def class_from_code(n):
 # ---------------------------------------------------------
 # MAIN LOOP
 # ---------------------------------------------------------
+def GetSNMP_poeport(host, midspan_id, port, c):
+    """Fetch SNMP data for a PoE port based on its midspan ID and port number."""
+    test_payload = {"message": "Test2"}
+    mqtt_publish_json(c, "midspan/poeport/singlePortData", test_payload)
+    # Retrieve the host IP of the midspan device from the configuration (or map).
+    cfg = load_config()
+    
+    test_payload = {"message": "Test2.2"}
+    mqtt_publish_json(c, "midspan/poeport/singlePortData", test_payload)
+    # Retrieve the OIDs from the config
+    oids = cfg["oids"]
+    defaults = cfg["defaults"]
+    midspans = cfg["midspans"]
+
+    test_payload = {"message": "Test2.3"}
+    mqtt_publish_json(c, "midspan/poeport/singlePortData", test_payload)
+    # SNMP config
+    snmp_cfg = defaults["snmp"]
+    user = snmp_cfg["user"]
+    auth_pass = snmp_cfg["auth_pass_env"]
+    priv_pass = snmp_cfg["priv_pass_env"]
+    auth_proto = usmHMACMD5AuthProtocol
+    priv_proto = usmDESPrivProtocol
+    timeout = float(snmp_cfg["timeout"])
+    retries = int(snmp_cfg["retries"])
+ 
+    test_payload = {"message": "Test2.3"}
+    mqtt_publish_json(c, "midspan/poeport/singlePortData", test_payload)
+
+    volt_raw = to_float(snmp_get(host, oids["device"]["system_voltage_v"], user, auth_proto, priv_proto, auth_pass, priv_pass, timeout, retries))
+
+    det_oid  = oids["port"]["detection_status"].format(port=port)
+    class_oid = oids["port"]["classification_code"].format(port=port)
+    pwr_oid   = oids["port"]["actual_power_w"].format(port=port)
+    max_oid   = oids["port"]["max_power_w"].format(port=port)
+
+    test_payload = {"message": "Test3"}
+    mqtt_publish_json(c, "midspan/poeport/singlePortData", test_payload)
+
+    det_raw = to_float(snmp_get(host, det_oid,  user, auth_proto, priv_proto, auth_pass, priv_pass, timeout, retries))
+    cls_raw = to_float(snmp_get(host, class_oid, user, auth_proto, priv_proto, auth_pass, priv_pass, timeout, retries))
+    pwr_act = to_float(snmp_get(host, pwr_oid,   user, auth_proto, priv_proto, auth_pass, priv_pass, timeout, retries))
+    pwr_max = to_float(snmp_get(host, max_oid,   user, auth_proto, priv_proto, auth_pass, priv_pass, timeout, retries))
+    
+    test_payload = {"message": "Test4"}
+    mqtt_publish_json(c, "midspan/poeport/singlePortData", test_payload)
+
+    port_payload = {
+        "id": midspan_id,
+        "port": port,
+        "status": map_port_status(det_raw),
+        "class": class_from_code(cls_raw),
+        "power": fmt_watts(pwr_act),
+        "maxPower": fmt_watts(pwr_max),
+        "voltage": fmt_volts(volt_raw)  # midspan voltage applies to all ports
+    }
+
+    test_payload = {"message": "Test5"}
+    mqtt_publish_json(c, "midspan/poeport/singlePortData", test_payload)
+    # Publish to MQTT topic
+    mqtt_publish_json(c, "midspan/poeport/singlePortData", port_payload)
+    print(f"PoE port data for midspan {midspan_id}, port {port}: {payload}")
+
+
 def collectSNMP_and_print(cfg):
 
     cfg = load_config()
@@ -370,7 +434,7 @@ def publish_port_state_after_set(mid_id, port, host, defaults, oids, mqtt_client
         payload = {
             "id": mid_id,
             "port": port,
-            "status": "faulty",
+            "status": "inactive",
             "power":  fmt_watts(pwr_actual),
             "voltage": fmt_volts(system_voltage) if system_voltage is not None else None,
             "maxPower": fmt_watts(pwr_max),
@@ -435,28 +499,36 @@ def start_mqtt_control_listener(cfg: Dict[str, Any]) -> mqtt.Client:
                 payload = {}
 
             state = (payload.get("state") or "").strip().lower()
-            if state not in ("on", "off"):
+            if state not in ("on", "off", "get", "set"):
                 print(f"[CTRL] Invalid state '{state}' in payload for {msg.topic}: {payload}")
                 return
 
-            try:
+            if state == "on" or state == "off":
+                try:
+                    port = int(port_str)
+                except Exception:
+                    print(f"[CTRL] Invalid port '{port_str}' in topic {msg.topic}")
+                    return
+
+                oid_enable_power = oid_enable_tpl.format(port=port)
+                value = 1 if state == "on" else 2  # 1 = enable, 2 = disable (typical admin state enums)
+
+                ok = snmp_set(host, user, auth_pass, priv_pass, auth_proto, priv_proto, timeout, retries, oid_enable_power, value)
+
+                publish_port_state_after_set(mid_id, port, host, defaults, oids, c, value)
+
+                print(f"[CTRL] midspan={mid_id} host={host} port={port} -> {state.upper()} => {'OK' if ok else 'FAIL'}")
+
+                # Optional: publish an acknowledgement
+                ack_topic = f"midspan/control/ack/{mid_id}/{port}"
+                mqtt_publish_json(c, ack_topic, {"state": state, "ok": ok})
+            
+            elif state == "get":
+                test_payload = {"message": "Test1"}
+                mqtt_publish_json(c, "midspan/poeport/singlePortData", test_payload)
                 port = int(port_str)
-            except Exception:
-                print(f"[CTRL] Invalid port '{port_str}' in topic {msg.topic}")
-                return
-
-            oid_enable_power = oid_enable_tpl.format(port=port)
-            value = 1 if state == "on" else 2  # 1 = enable, 2 = disable (typical admin state enums)
-
-            ok = snmp_set(host, user, auth_pass, priv_pass, auth_proto, priv_proto, timeout, retries, oid_enable_power, value)
-
-            publish_port_state_after_set(mid_id, port, host, defaults, oids, c, value)
-
-            print(f"[CTRL] midspan={mid_id} host={host} port={port} -> {state.upper()} => {'OK' if ok else 'FAIL'}")
-
-            # Optional: publish an acknowledgement
-            ack_topic = f"midspan/control/ack/{mid_id}/{port}"
-            mqtt_publish_json(c, ack_topic, {"state": state, "ok": ok})
+                GetSNMP_poeport(host, mid_id, port, c)
+            
         except Exception as e:
             print(f"[CTRL] Exception handling message on {msg.topic}: {e}", file=sys.stderr)
 

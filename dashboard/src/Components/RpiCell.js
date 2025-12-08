@@ -169,14 +169,14 @@ const RpiCell = ({ tile, wallName, updateTile, selectedDisplayField }) => {
             const cleanId =  tile.id.startsWith("rpi-") ? tile.id.replace(/^rpi-/, ""): tile.id;
 
             //await axios.post(`http://10.128.48.5:5000/control/${cleanId}/${command}`);
-            axios.post(`http://10.128.48.5:5000/control/${cleanId}/${command}`)
+            axios.post(`http://10.128.48.5:5001/control/${cleanId}/${command}`)
             .then(() => message.success(`Sent ${command} to ${cleanId}`))
             .catch(() => message.error(`Failed to send ${command}`));
             //message.success(`Sent ${command} to ${cleanId}`);
             //console.log(`[SEND COMMAND] ${command} to rpi ${cleanId}`);
             const hostname = `rpi-${cleanId}.local`;
 
-            if (command === "shutdown" || command === "poweroff") {
+            if (command === "shutdown") {
 		updateTile(tile.id, {status: {value: "faulty", timestamp: Date.now() }} );
                 updateTile(tile.id, {
                     metadata: { ...(tile.metadata || {}), wasShutdown: command === "shutdown", wasPoweredOff: command === "poweroff",
@@ -264,78 +264,61 @@ const RpiCell = ({ tile, wallName, updateTile, selectedDisplayField }) => {
                     )}
 
 
-                    <div style={{ display: "flex", gap: "10px", marginTop: "15px" }}>
-                        <Button
-                            type="primary"
-                            style={{ backgroundColor: "#52c41a" }}
-                            onClick={() => handleStatusChange("working")}
-                            disabled={tile.status.value === "working"}
-                        >
-                            Set Working
-                        </Button>
-                        <Button
-                            danger
-                            onClick={() => handleStatusChange("faulty")}
-                            disabled={tile.status.value === "faulty"}
-                        >
-                            Set Faulty
-                        </Button>
-                        <Button
-                            onClick={() => handleStatusChange("deactivated")}
-                            disabled={tile.status.value === "deactivated"}
-                            style={{ backgroundColor: "#d9d9d9", color: "rgba(0,0,0,0.65)" }}
-                        >
-                            Deactivate
-                        </Button>
-                        <Button
-                            onClick={() => showGraphForTile(tile.id)}
-                            style={{ backgroundColor: "#722ed1"}}
-                        >
-                            Show Graph
-                        </Button>
-                    </div>
-                    <div style={{ display: "flex", gap: "10px", marginTop: "10px", flexWrap: "wrap" }}>
-                       <Button
-                            onClick={() => sendControlCommand("reboot")}
-                            style={{ backgroundColor: "#1890ff", color: "white"}}
-                        >
-                            Reboot
-                        </Button>
-                        <Button
-                            onClick={() => sendControlCommand("shutdown")}
-                            style={{ backgroundColor: "#1890ff", color: "white"}}
-                        >
-                            Shutdown
-                        </Button>
-                        <Button
-                            onClick={() => sendControlCommand("poweron")}
-                            style={{ backgroundColor: "#1890ff", color: "white"}}
-                        >
-                            Power on
-                        </Button>
-                        <Button
-                            onClick={() => sendControlCommand("poweroff")}
-                            style={{ backgroundColor: "#1890ff", color: "white"}}
-                        >
-                            Power off
-                        </Button>
-                        <Button
-                            onClick={async() => {
-                                const hostname = `rpi-${tile.id}.local`;
-                                const pingStatus = await pingRpi(hostname);
-                                console.log(`[PING] Tile ${tile.id} (${hostname})-> result: ${pingStatus}`);
-                                if (pingStatus === "working"){
-                                    message.success(`Ping to ${hostname} successful`);
-                                } else {
-                                    message.error(`Ping to ${hostname} failed`);
-                                }
-                                updateTile(tile.id, {status: {value: pingStatus, timestamp: Date.now() } });
-                            }}
-                            style={{ backgroundColor: "#1890ff", color: "white"}}
-                        >
-                            Ping RPI
-                        </Button>
-                    </div>
+                   <div style={{ display: "flex", gap: "10px", marginTop: "15px" }}>
+                    <Button
+                        onClick={() => sendControlCommand("reboot")}
+                        style={{ backgroundColor: "rgba(175, 169, 120, 0.4)", color: "#948713" }} 
+                    >
+                        Reboot
+                    </Button>
+
+                    <Button
+                        onClick={() => sendControlCommand("shutdown")}
+                        style={{ backgroundColor: "rgba(209, 168, 106, 0.4)", color: "#945313" }}
+                    >
+                        Shutdown
+                    </Button>
+                    
+                    <Button
+                        style={{ backgroundColor: "rgba(90, 122, 75, 0.4)", color: "#276709" }}
+                        onClick={() => sendControlCommand("poweron")}
+                    >
+                        Power on
+                    </Button>
+
+                    <Button
+                        onClick={() => sendControlCommand("poweroff")}
+                        style={{ backgroundColor: "rgba(209, 108, 106, 0.4)", color: "#941313" }}
+                    >
+                        Power off
+                    </Button>
+                </div>
+
+                <div style={{ display: "flex", gap: "10px", marginTop: "10px", flexWrap: "wrap" }}>
+                    <Button
+                        onClick={async() => {
+                            const hostname = `rpi-${tile.id}.local`;
+                            const pingStatus = await pingRpi(hostname);
+                            console.log(`[PING] Tile ${tile.id} (${hostname})-> result: ${pingStatus}`);
+                            if (pingStatus === "working"){
+                                message.success(`Ping to ${hostname} successful`);
+                            } else {
+                                message.error(`Ping to ${hostname} failed`);
+                            }
+                            updateTile(tile.id, {status: {value: pingStatus, timestamp: Date.now() } });
+                        }}
+                        style={{ backgroundColor: "rgba(89, 74, 122, 0.4)", color: "#2d0c7a"}}
+                    >
+                        Ping RPI
+                    </Button>
+
+                    <Button
+                        onClick={() => showGraphForTile(tile.id)}
+                        style={{ backgroundColor: "rgba(121, 104, 122, 0.4)", color: "#740c7a"}}
+                    >
+                        Show Graph
+                    </Button>
+                </div>
                 </div>
             </Modal>
         </>

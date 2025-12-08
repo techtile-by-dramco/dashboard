@@ -30,7 +30,9 @@ const MidspanDevice = ({ midspanId, midspanData, midspanRuntimeData, ports, togg
                 <h3>POE Ports</h3>
                 <div style={{display: "flex", flexWrap: "wrap"}}>
                     {ports && Object.entries(ports).map(([portId, portData]) => (
-                        <POEPort key={portId} portId={portId} portData={portData} togglePort={togglePort}/>
+                        //<POEPort key={portId} portId={portId} portData={portData} togglePort={togglePort}/>
+                        <POEPort key={portId} midspanId={midspanId} portId={portId} portData={portData} togglePort={togglePort} />
+
                     ))}
                 </div>
             </div>

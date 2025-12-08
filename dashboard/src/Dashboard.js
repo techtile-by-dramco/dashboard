@@ -16,6 +16,7 @@ import Ceiling from './Views/Ceiling';  // Import the Ceiling view
 import Floor from './Views/Floor';  // Import the Ceiling view
 import WallEast from './Views/WallEast';  // Import the Ceiling view
 import WallWest from './Views/WallWest';  // Import the Ceiling view
+import axios from "axios"; 
 
 
 
@@ -134,6 +135,8 @@ const poePortsReducer = (state, action) => {
     switch (action.type) {
         case 'UPDATE_POE_PORT':
             const { midspanId, portId, updates } = action.payload;
+            //console.log('Updating POE Port with data:', action.payload);  // Add this for debugging
+
             return {
                 ...state,
                 [midspanId]: {
@@ -407,25 +410,60 @@ const Dashboard = ({viewMode, setViewMode}) => {
     }, [serverData]);
 
 
-function getRpiFromHosts(midspanId, port) {
-  for (const [rpiId, entry] of Object.entries(midspanConnections || {})) {
+function getRpiFromHosts2(midspanId, port) {
 
+  for (const [rpiId, entry] of Object.entries(midspanConnections || {})) {
+    console.log(`Checking RPI: ${rpiId}, Midspan: ${m}, Port: ${p}`);
     const m = entry?.midspan ?? entry?.vars?.midspan;
     const p = entry?.["poe-port"] ?? entry?.vars?.["poe-port"];
 
     if (!m || !p) continue;
 
     if (m === midspanId && String(p) === String(port)) {
+      console.log(`Found RPI: ${rpiId}`);
       return rpiId;
     }
   }
+  console.log("No RPI found for this midspan and port.");
   return null;
+}
+
+function getRpiFromHosts(midspanId, portId) {
+    // Log the incoming midspanId and portId to debug
+    console.log(`Looking for RPI for Midspan: ${midspanId}, Port: ${portId}`);
+    const hostsData = fetchHosts();
+
+    // Try to find the RPI directly from poePortsDataRef
+    const rpiId = poePortsDataRef.current[midspanId]?.[portId]?.rpi;
+
+    if (rpiId) {
+        console.log(`Found RPI: ${rpiId} directly from poePortsDataRef`);
+        return rpiId;  // Return the RPI ID if found directly
+    }
+
+    console.warn(`No RPI found for Midspan: ${midspanId}, Port: ${portId} in poePortsDataRef`);
+
+    // If not found, try searching in hostsData (if needed)
+    for (const [rpiId, entry] of Object.entries(hostsData.all.hosts || {})) {
+        const midspan = entry?.midspan ?? entry?.vars?.midspan;
+        const port = entry?.["poe-port"] ?? entry?.vars?.["poe-port"];
+
+        // Check if the current host matches the midspanId and portId
+        if (midspan === midspanId && String(port) === String(portId)) {
+            console.log(`Found RPI: ${rpiId} for Midspan: ${midspanId}, Port: ${portId} in hostsData`);
+            return rpiId;  // Return the RPI ID when a match is found in hostsData
+        }
+    }
+
+    // If no RPI found in hostsData, log an error
+    console.error(`No RPI found for Midspan: ${midspanId}, Port: ${portId} in hostsData`);
+    return null;  // Return null if no match is found in both places
 }
 
 
 function applyResults(results) {
   const now = Date.now();
-  console.warn("APPLYRESULTS ENTRY:", results);
+  console.log("APPLYRESULTS ENTRY:", results);
 
   // Start from existing cache, so we never lose older data if DB returns null
  const rpiCache = {};
@@ -433,8 +471,10 @@ function applyResults(results) {
  const poePortCache = {}; // structure: poePortCache[mid][port] = {...}  
 
 
-try {
-    const existing = localStorage.getItem("rpiTileCache");
+
+   // ---- RPI cache ----
+  try {
+    const existing = localStorage.getItem("rpiCache");
     if (existing) {
       const items = JSON.parse(existing)?.items || [];
       items.forEach((item) => {
@@ -475,13 +515,9 @@ try {
   }
 
 
-
-
-
-
   // Apply new DB results on top
   (results || []).forEach((r) => {
-
+    //console.log("Processing result:", r);  // Log each result to verify it's processed correctly
     const row = r.row;
     if (!row) return;
 
@@ -501,7 +537,7 @@ try {
 
       const last_received = now;
 
-      console.warn("[applyResults] rpi_ping row → tile", id, { raw, mapped });
+      //console.warn("[applyResults] rpi_ping row → tile", id, { raw, mapped });
 
       // Update the tile in memory
       updateTile(id, {
@@ -521,36 +557,35 @@ try {
       return;
     }
 
-    // Handle Midspan rows (added code)
     if (r.table === "midspan_data") {
-      console.warn("[applyResults] midspan row → tile", id, row);
+      //console.warn("[applyResults] midspan row → tile", id, row);
 
       // You can add any additional logic for midspan tiles here
       // Assuming midspan data has `status`, `systemVoltage`, etc. 
-    const devicePayload = {id,
-    data: {
-      totalPowerConsumption: { value: row.totalPowerConsumption, timestamp: now },
-      maxAvailablePowerBudget: { value: row.maxAvailablePowerBudget, timestamp: now },
-      systemVoltage: { value: row.systemVoltage, timestamp: now },
-      temperature: { value: row.temperature, timestamp: now },
-      status: { value: row.status, timestamp: now },
-      source: { value: "db", timestamp: now }
-    },
-    last_received: now
-  };
+      const devicePayload = {id,
+      data: {
+        totalPowerConsumption: { value: row.totalPowerConsumption, timestamp: now },
+        maxAvailablePowerBudget: { value: row.maxAvailablePowerBudget, timestamp: now },
+        systemVoltage: { value: row.systemVoltage, timestamp: now },
+        temperature: { value: row.temperature, timestamp: now },
+        status: { value: row.status, timestamp: now },
+        source: { value: "db", timestamp: now }
+      },
+      last_received: now
+    };
 
-    updateMidspan(id, devicePayload);
-    midspanCache[id] = devicePayload;
-    return;
+      updateMidspan(id, devicePayload);
+      midspanCache[id] = devicePayload;
+      return;
     }
 
 if (r.table === "midspan_poeport") {
-  console.warn("ApplyResults midspan");
+  //console.warn("ApplyResults midspan");
   const mid = r.midspanId;
   const port = row.port;
   if (!port) return;            // ignore null ports
 
-  console.warn("[applyResults] midspan_poeport →", mid, port, row);
+  //console.warn("[applyResults] midspan_poeport →", mid, port, row);
 
 
   const update = {
@@ -575,56 +610,7 @@ if (r.table === "midspan_poeport") {
       return;
     }
   });
-
-
-  // Write merged cache back
-  //try {
-  //  const items = Object.values(rpiCache);
-  //  if (items.length > 0) {
-  //    const payload = { ts: now, items };
-  //    localStorage.setItem("rpiTileCache", JSON.stringify(payload));
-  //    console.warn("[cache] stored", items.length, "RPI tiles to localStorage (merged)");
-  //  }
-  //} catch (e) {
-  //  console.warn("[cache] failed to store RPI tiles", e);
-  //}
-
-  try {
-    localStorage.setItem(
-      "rpiTileCache",
-      JSON.stringify({ ts: now, items: Object.values(rpiCache) })
-    );
-  } catch (e) {
-    console.warn("[cache:RPI] write failed", e);
-  }
-
-
- try {
-    localStorage.setItem(
-      "midspanCache",
-      JSON.stringify({ ts: now, items: Object.values(midspanCache) })
-    );
-  } catch (e) {
-    console.warn("[cache:MIDSPAN] write failed", e);
-  }
-
-
-try {
-    const flat = [];
-    Object.entries(poePortCache).forEach(([mid, ports]) => {
-      Object.values(ports).forEach((entry) => flat.push(entry));
-    });
-    localStorage.setItem(
-      "poePortCache",
-      JSON.stringify({ ts: now, items: flat })
-    );
-  } catch (e) {
-    console.warn("[cache:POE] write failed", e);
-  }
 }
-
-
-
 /*async function preloadEverythingFromDb12({
   rpiIds = [],
   midspanIds = [],
@@ -709,7 +695,7 @@ async function preloadEverythingFromDb({
     // ------------------- 1) Fetch RPIs individually -------------------
     (rpiIds || []).map(id => {
       const url = base + `/db/latest?table=rpi_ping&id=${encodeURIComponent(id)}`;
-      console.warn("[preload rpi] GET", url);
+      console.log("[preload rpi] GET", url);
       RpiRequests.push(
          fetch(url)
            .then(resp => resp.json())
@@ -727,7 +713,7 @@ async function preloadEverythingFromDb({
 
 
     // ------------------- 2) Fetch Midspan devices individually -------------------
-    for (const mid of midspanIds) {
+    /*for (const mid of midspanIds) {
       try {
         let url = `${base}/db/latest?table=midspan_data&id=${encodeURIComponent(mid)}`;
         console.log("[preload] starting fetch for midspan:", mid, "url:", url);
@@ -781,7 +767,76 @@ async function preloadEverythingFromDb({
        }
     console.log("[preload] midspan ", mid, " results fetched:", MidspanResults);
     applyResults(MidspanResults); 
+    }*/
+
+    // ------------------- 2 & 3 Midspans and PDU ports -----------------
+    for (const mid of midspanIds) {
+        try {
+            // Fetch midspan data
+            let url = `${base}/db/latest?table=midspan_data&id=${encodeURIComponent(mid)}`;
+            console.log("[preload] starting fetch for midspan:", mid, "url:", url);
+            let resp = await fetch(url);
+            console.log("[preload] fetch completed for midspan:", mid, "status:", resp.status);
+            let row = await resp.json();
+            console.log("[preload] raw response text for midspan:", mid, row);
+
+            // Fallback if row is missing
+            if (!row) {
+                url = `${base}/db/latest?table=midspan_data&id=${encodeURIComponent(mid)}&port=`;
+                resp = await fetch(url);
+                row = await resp.json();
+            }
+
+            // Construct midspan data to apply
+            const midspanData = {
+                id: row.id,
+                totalPowerConsumption: row.totalPowerConsumption || "N/A",
+                maxAvailablePowerBudget: row.maxAvailablePowerBudget || "N/A",
+                systemVoltage: row.systemVoltage || "N/A",
+                temperature: row.temperature || "N/A",
+                status: row.status || "inactive", // Default to "inactive" if no status is found
+            };
+
+            // Apply results for the midspan data immediately
+            if (row) {
+                applyResults([{ table: "midspan_data", row: midspanData }]);
+                console.log("[ApplyResults] for midspan data", midspanData);
+            }
+
+        } catch (e) {
+            console.warn("[preload] midspan GET failed for", mid, e);
+        }
+
+        // ------------------- 2) Fetch PoE ports per midspan -------------------
+        const count = portCounts[mid] || poePortCount;  // Get the number of ports for the current midspan
+
+        // Fetch data for each PoE port of the current midspan, one by one
+        for (let port = 1; port <= count; port++) {
+            try {
+                const p = new URLSearchParams({ id: mid, port: String(port) });
+                const url = `${base}/db/latest?table=midspan_poeport&${p.toString()}`;
+
+                console.log("[preload] starting fetch for midspan-poeport:", mid, port, "url:", url);
+                const resp = await fetch(url);
+                console.log("[preload] fetch completed for midspan-poeport:", mid, port, "status:", resp.status);
+                const row = await resp.json();
+
+                // Log the raw response if needed
+                console.log("[preload] raw response text for midspan-poeport:", mid, port, row);
+
+                // If data is available, apply results for the current PoE port immediately
+                if (row) {
+                    applyResults([{ table: "midspan_poeport", row, midspanId: mid }]);
+                    console.log(`[ApplyResults] for midspan ${mid}, port ${port}`);
+                }
+
+            } catch (e) {
+                console.warn(`[preload] PoE port GET failed for midspan ${mid}, port ${port}`, e);
+            }
+        }
     }
+
+    console.log("[preload] All midspans and PoE ports processed.");
 
     // ------------------- 4) Fetch PDUs individually -------------------
     //for (const pdu of (pduIds || [])) {
@@ -1302,7 +1357,7 @@ const getTilesByCategory = (categoryType, filterFn = () => true) => {
 		});
 
   try {
-    const cached = localStorage.getItem("rpiTileCache");
+    const cached = localStorage.getItem("rpiCache");
     if (cached) {
         const parsed = JSON.parse(cached);
         const items = parsed?.items;
@@ -1390,11 +1445,11 @@ try {
       const items = JSON.parse(cached)?.items || [];
       items.forEach((entry) => {
         const { id, port, data } = entry;
-        const rpiFromHosts = getRpiFromHosts(id, port);
+        //const rpiFromHosts = getRpiFromHosts(id, port);
         updatePoePort(id, port, {
-          ...data,
+          ...data
           // als cache geen rpi had, herstel hem uit hosts of behoud bestaande
-          rpi: data?.rpi ?? rpiFromHosts ?? poePortsDataRef.current[id]?.[port]?.rpi ?? null
+          //rpi: data?.rpi ?? rpiFromHosts ?? poePortsDataRef.current[id]?.[port]?.rpi ?? null
         });
       });
       console.warn("[cache] restored", items.length, "poe ports from cache (with rpi fallback)");
@@ -1774,6 +1829,7 @@ try {
         }
     };
 
+
     const handlePOEPortStatusMessage = (data) => {
         if (!data || typeof data !== "object") return;
 
@@ -1793,8 +1849,174 @@ try {
         };
 
         updatePoePort(midspanId, portId, update);
-
         console.log(`[LIVE UPDATE] POE ${midspanId}:${portId}`, update);
+
+        const rpiId = getRpiFromHosts(midspanId, portId); // Get the RPI connected to this port
+        console.log("Midspan: ", midspanId, ", PoE port: ", portId, " connected to RPI: ", rpiId);
+
+        let rpiStatus = "unknown";
+
+        // ---- GETTING RPI status from CACHE ---
+        if (rpiId) {
+          try {
+              const rpiCacheData = localStorage.getItem("rpiCache");
+              let rpiCachedRecent = rpiCacheData ? JSON.parse(rpiCacheData) : { ts: Date.now(), items: [] };
+
+              if (rpiCachedRecent.items) {
+                 const rpiEntry = rpiCachedRecent.items.find(e => e.id === rpiId);
+                  if (rpiEntry && rpiEntry.status && typeof rpiEntry.status.value === "string") {
+                      rpiStatus = rpiEntry.status.value; // Set the RPI's status if found in cache
+                      console.warn("[CACHE] Status found in rpiCache: ", rpiStatus);
+
+                  } else {
+                      console.warn(`RPI status not found or invalid for ${rpiId}`);
+                  }
+              } else {
+                  console.warn("[CACHE] No items in rpiCache");
+              }
+          } catch (e) {
+              console.error("[CACHE] Failed to retrieve RPI status from cache:", e);
+          }
+      }
+
+        console.log(`RPI ${rpiId} status: ${rpiStatus}`);
+
+        // ---- PUTTING poeport status in CACHE ---
+        try {
+            const cachedData = localStorage.getItem("poePortCache");
+            let poePortCache = cachedData ? JSON.parse(cachedData) : { ts: Date.now(), items: [] };
+
+            // Remove the old record for this port and add the updated one
+            poePortCache.items = poePortCache.items.filter(
+                e => !(e.id === midspanId && String(e.port) === String(portId))
+            );
+
+            // Add the updated record
+            poePortCache.items.push({
+                id: midspanId,
+                port: portId,
+                data: update
+            });
+
+            // Save the updated cache
+            localStorage.setItem("poePortCache", JSON.stringify(poePortCache));
+            console.log("[CACHE] Updated POE port in cache:", midspanId, portId);
+        } catch (e) {
+            console.error("[CACHE] Failed to update POE port in cache:", e);
+        }
+
+        // ---- PINGING the RPI+ PUTTING IN CACHE ---
+        if (rpiId) {
+                  const pingRpiId = `rpi-${rpiId}.local`;  // Correct the formatting here
+                  console.log("Formatted pingRpiId:", pingRpiId);
+        
+                  let attempt = 0;
+                  const maxAttempts = 6; // Maximum attempts (30 seconds: 5, 10, 15, 20, 25, 30 seconds)
+        
+                  // Recursive function to ping the RPI at intervals (5 seconds)
+                  const tryPing = () => {
+                      console.log(`Pinging RPI attempt ${attempt + 1}: ${pingRpiId}`);
+                      
+                      pingRpi(pingRpiId).then((pingStatus) => {
+                          console.log(`[PING] Ping result: ${pingStatus}`);
+        
+                          // If the ping status is different from the current RPI status, update and exit
+                          if (pingStatus !== rpiStatus) {
+                              message.success(`Ping to ${pingRpiId} successful`);
+                              updateTile(rpiId, { status: { value: pingStatus, timestamp: Date.now() } });
+        
+                              // After successful ping, update the RPI status in the cache
+                              try {
+                                  const rpiCacheData = localStorage.getItem("rpiCache");
+                                  let rpiCache = rpiCacheData ? JSON.parse(rpiCacheData) : { ts: Date.now(), items: [] };
+        
+                                  rpiCache.items = rpiCache.items.filter(e => e.id !== rpiId); // Remove old record
+                                  rpiCache.items.push({
+                                      id: rpiId,
+                                      status: { value: pingStatus, timestamp: Date.now() },
+                                      last_received: Date.now()
+                                  });
+        
+                                  localStorage.setItem("rpiCache", JSON.stringify(rpiCache));
+                                  console.log("[CACHE] Updated RPI in cache:", rpiId);
+                                  
+                                  
+                              } catch (e) {
+                                  console.error("[CACHE] Failed to update RPI in cache:", e);
+                              }
+
+                              const cleanId_mid = midspanId;
+                              const cleanId_poe = portId;
+                              axios.post(`http://10.128.48.5:5001/control/${cleanId_mid}/${cleanId_poe}/get`)
+                                .then(() => {
+                                  // Success message
+                                  console.log(`Successfully sent 'get' command to ${cleanId_mid} port ${cleanId_poe}`);
+                                  message.success(`Sent 'get' command to ${cleanId_mid} port ${cleanId_poe}`);
+                                })
+                                .catch((error) => {
+                                  // Log the error details
+                                  console.error(`Failed to send 'get' command to ${cleanId_mid} port ${cleanId_poe}`, error);
+                                  message.error(`Failed to send 'get' command to ${cleanId_mid} port ${cleanId_poe}`);
+                                });
+
+                              return;  // Exit early if the ping is successful and status has changed
+                          } else {
+                              attempt++;
+                              if (attempt < maxAttempts) {
+                                  // Retry after 5 seconds if the ping is not successful
+                                  setTimeout(tryPing, 5000);
+                              } else {
+                                  // If all attempts fail, log and exit
+                                  message.error(`Ping to ${pingRpiId} failed after ${maxAttempts * 5} seconds`);
+                                  updateTile(rpiId, { status: { value: "faulty", timestamp: Date.now() } });
+        
+                                  // After 30 seconds and failed attempts, update the RPI status in the cache
+                                  try {
+                                      const rpiCacheData = localStorage.getItem("rpiCache");
+                                      let rpiCache = rpiCacheData ? JSON.parse(rpiCacheData) : { ts: Date.now(), items: [] };
+        
+                                      rpiCache.items = rpiCache.items.filter(e => e.id !== rpiId); // Remove old record
+                                      rpiCache.items.push({
+                                          id: rpiId,
+                                          status: { value: "faulty", timestamp: Date.now() },
+                                          last_received: Date.now()
+                                      });
+        
+                                      localStorage.setItem("rpiCache", JSON.stringify(rpiCache));
+                                      console.log("[CACHE] Updated RPI in cache (failed ping):", rpiId);
+
+                                  } catch (e) {
+                                      console.error("[CACHE] Failed to update RPI in cache (failed ping):", e);
+                                  }
+
+                                  //const cleanId_mid =  tile.id.startsWith("rpi-") ? tile.id.replace(/^rpi-/, ""): tile.id;
+                                  //const cleanId_poe =  tile.id.startsWith("rpi-") ? tile.id.replace(/^rpi-/, ""): tile.id;
+                                  const cleanId_mid = midspanId;
+                                  const cleanId_poe = portId;
+                                  axios.post(`http://10.128.48.5:5000/control/${cleanId_mid}/${cleanId_poe}/get`)
+                                    .then(() => {
+                                      // Success message
+                                      console.log(`Successfully sent 'get' command to ${cleanId_mid} port ${cleanId_poe}`);
+                                      message.success(`Sent 'get' command to ${cleanId_mid} port ${cleanId_poe}`);
+                                    })
+                                    .catch((error) => {
+                                      // Log the error details
+                                      console.error(`Failed to send 'get' command to ${cleanId_mid} port ${cleanId_poe}`, error);
+                                      message.error(`Failed to send 'get' command to ${cleanId_mid} port ${cleanId_poe}`);
+                                    });
+                              }
+                          }
+                      }).catch((error) => {
+                          console.log(`[PING] Error pinging ${pingRpiId}:`, error);
+                          message.error(`Ping to ${pingRpiId} failed`);
+                      });
+                  };
+        
+                  // Start the recursive ping process
+                  tryPing();
+              } else {
+                  console.log("No RPI found for Midspan:", midspanId, "Port:", portId);
+              }
     };
 
 
@@ -2016,6 +2238,10 @@ useEffect(() => {
             //    Promise.resolve().then(() => handlePOEPortMessage(data));
             //},
 
+            "midspan/poeport/singlePortData": (data) => {
+                Promise.resolve().then(() => handlePOEPortMessage(data));
+            },
+
              "midspan/poeport/state/#": (data) => 
               Promise.resolve().then(() => handlePOEPortStatusMessage(data)),
 
@@ -2227,19 +2453,25 @@ return (
                             //const filteredPorts = {};
                             //console.log("[ Render] midspan", midspanId, "ports in poePortsData:", Object.keys(poePortsData[midspanId] || {}), "filteredPorts:", Object.keys(filteredPorts));
  
+                            // Filter ports based on visible tile IDs
+                            const filteredPorts = {};
                             const ports = poePortsData[midspanId] || {};
-                            //Object.entries(ports).forEach(([portId, portInfo]) => {
-                            //    if (allVisibleTileIds.has(portInfo.rpi)) {
-                            //        filteredPorts[portId] = portInfo;
-                            //    }
-                            //});
-                            const filteredPorts = ports;
+                            Object.entries(ports).forEach(([portId, portInfo]) => {
+                                // Check if the port is connected to an RPI (i.e., if it has an `rpi` field)
+                                if (allVisibleTileIds.has(portInfo.rpi)) {
+                                    filteredPorts[portId] = portInfo;  // Show connected ports normally
+                                } else {
+                                    // Mark unconnected ports as gray and set their status to "unconnected"
+                                    filteredPorts[portId] = {
+                                        ...portInfo,
+                                        status: { value: "unconnected", timestamp: Date.now() },
+                                    };
+                                }
+                            });
 
                             // Only render midspan if it has relevant ports
-                            if(showOnlyFaulty) {
-                                if(!isMidspanFaulty) return null;
-                            } else {
-                                //if (Object.keys(filteredPorts).length === 0) return null;
+                            if (showOnlyFaulty) {
+                                if (!isMidspanFaulty) return null;  // Skip rendering if midspan is not faulty and showOnlyFaulty is enabled
                             }
                             return (
                                 <MidspanDevice

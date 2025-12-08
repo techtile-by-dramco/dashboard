@@ -8,11 +8,12 @@ BROKER_URL = "10.128.48.5"
 CLIENT_ID = f"client_{hex(random.getrandbits(64))[2:]}"
 TOPICS = [
     "midspan/data",
-    "pdu/data",
+    "pdu/data", 
     "rpi/data",
     "timeprovider/data",
     "rpi/control",
     "midspan/poeport",
+    "midspan/poeport/singlePortData", #especially for the SNMP get and set buttons (one poerport)
     "rpi/ping"
 ]
 

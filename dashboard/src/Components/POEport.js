@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Card, Modal, Button, Tag, Tooltip } from "antd";
+import { Card, Modal, Button, Tag, Tooltip, message } from "antd";
+import axios from "axios";
 
 const POEPort = ({ midspanId, portId, portData, togglePort }) => {
+    console.log("MIDSPANID: ", midspanId, " PortID: ", portId);
     const [modalOpen, setModalOpen] = useState(false);
     const [now, setNow] = useState(Date.now());
 
@@ -33,21 +35,43 @@ const POEPort = ({ midspanId, portId, portData, togglePort }) => {
     };
 
     const getBackgroundColor = () => {
+        const status = portData?.status?.value;
+
+        if (status === "active") {
+            return "#dfffd6"; // Green background when status is active
+        }
+
+        if (status === "inactive") {
+            return "#ffd6d6"; // Light red background when inactive
+        }
+
+        if (status === "unconnected"){
+            return "#f0f0f0"; 
+        }
+
         const rawPower = portData?.power?.value;
         const numericPower = parseFloat(String(rawPower).replace(/W/i, "").trim());
 
-        if (!isNaN(numericPower) && numericPower === 0) {
-            return "#f0f0f0"; // Grijs bij 0W
-        }
-        const status = portData?.status?.value;
-        switch (status) {
-            case "active":
-                return "#dfffd6";
-            case "inactive":
-                return "#ffd6d6";
-            default:
-                return "#FFFFFF";
-        }
+        //if (!isNaN(numericPower) && numericPower === 0) {
+        //    return "#f0f0f0"; // Gray background if power is 0W
+        //}
+
+        
+        return "#FFFFFF"; // Default white background for unknown status
+    };
+
+     const updateData = () => {
+        axios.post(`http://10.128.48.5:5001/control/${midspanId}/${portId}/get`)
+            .then(() => {
+                // Success message
+                console.log(`Successfully sent 'get' command to ${midspanId} port ${portId}`);
+                message.success(`Sent 'get' command to ${midspanId} port ${portId}`);
+            })
+            .catch((error) => {
+                // Log the error details
+                console.error(`Failed to send 'get' command to ${midspanId} port ${portId}`, error);
+                message.error(`Failed to send 'get' command to ${midspanId} port ${portId}`);
+            });
     };
 
     return (
@@ -110,10 +134,10 @@ const POEPort = ({ midspanId, portId, portData, togglePort }) => {
                         );
                     })}
                     <Button
-                        onClick={() => togglePort?.()}
+                        onClick={updateData}
                         style={{ backgroundColor: "lightblue", color: "rgba(1,1,1,1)" }}
                     >
-                        Toggle Port
+                        Update Data
                     </Button>
                 </div>
             </Modal>
