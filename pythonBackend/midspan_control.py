@@ -178,20 +178,15 @@ def class_from_code(n):
 # ---------------------------------------------------------
 def GetSNMP_poeport(host, midspan_id, port, c):
     """Fetch SNMP data for a PoE port based on its midspan ID and port number."""
-    test_payload = {"message": "Test2"}
-    mqtt_publish_json(c, "midspan/poeport/singlePortData", test_payload)
+  
     # Retrieve the host IP of the midspan device from the configuration (or map).
     cfg = load_config()
     
-    test_payload = {"message": "Test2.2"}
-    mqtt_publish_json(c, "midspan/poeport/singlePortData", test_payload)
     # Retrieve the OIDs from the config
     oids = cfg["oids"]
     defaults = cfg["defaults"]
     midspans = cfg["midspans"]
 
-    test_payload = {"message": "Test2.3"}
-    mqtt_publish_json(c, "midspan/poeport/singlePortData", test_payload)
     # SNMP config
     snmp_cfg = defaults["snmp"]
     user = snmp_cfg["user"]
@@ -202,9 +197,7 @@ def GetSNMP_poeport(host, midspan_id, port, c):
     timeout = float(snmp_cfg["timeout"])
     retries = int(snmp_cfg["retries"])
  
-    test_payload = {"message": "Test2.3"}
-    mqtt_publish_json(c, "midspan/poeport/singlePortData", test_payload)
-
+    
     volt_raw = to_float(snmp_get(host, oids["device"]["system_voltage_v"], user, auth_proto, priv_proto, auth_pass, priv_pass, timeout, retries))
 
     det_oid  = oids["port"]["detection_status"].format(port=port)
@@ -212,16 +205,13 @@ def GetSNMP_poeport(host, midspan_id, port, c):
     pwr_oid   = oids["port"]["actual_power_w"].format(port=port)
     max_oid   = oids["port"]["max_power_w"].format(port=port)
 
-    test_payload = {"message": "Test3"}
-    mqtt_publish_json(c, "midspan/poeport/singlePortData", test_payload)
+    
 
     det_raw = to_float(snmp_get(host, det_oid,  user, auth_proto, priv_proto, auth_pass, priv_pass, timeout, retries))
     cls_raw = to_float(snmp_get(host, class_oid, user, auth_proto, priv_proto, auth_pass, priv_pass, timeout, retries))
     pwr_act = to_float(snmp_get(host, pwr_oid,   user, auth_proto, priv_proto, auth_pass, priv_pass, timeout, retries))
     pwr_max = to_float(snmp_get(host, max_oid,   user, auth_proto, priv_proto, auth_pass, priv_pass, timeout, retries))
     
-    test_payload = {"message": "Test4"}
-    mqtt_publish_json(c, "midspan/poeport/singlePortData", test_payload)
 
     port_payload = {
         "id": midspan_id,
@@ -233,8 +223,6 @@ def GetSNMP_poeport(host, midspan_id, port, c):
         "voltage": fmt_volts(volt_raw)  # midspan voltage applies to all ports
     }
 
-    test_payload = {"message": "Test5"}
-    mqtt_publish_json(c, "midspan/poeport/singlePortData", test_payload)
     # Publish to MQTT topic
     mqtt_publish_json(c, "midspan/poeport/singlePortData", port_payload)
     print(f"PoE port data for midspan {midspan_id}, port {port}: {payload}")
@@ -524,8 +512,6 @@ def start_mqtt_control_listener(cfg: Dict[str, Any]) -> mqtt.Client:
                 mqtt_publish_json(c, ack_topic, {"state": state, "ok": ok})
             
             elif state == "get":
-                test_payload = {"message": "Test1"}
-                mqtt_publish_json(c, "midspan/poeport/singlePortData", test_payload)
                 port = int(port_str)
                 GetSNMP_poeport(host, mid_id, port, c)
             

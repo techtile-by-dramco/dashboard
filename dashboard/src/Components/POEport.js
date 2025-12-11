@@ -3,7 +3,7 @@ import { Card, Modal, Button, Tag, Tooltip, message } from "antd";
 import axios from "axios";
 
 const POEPort = ({ midspanId, portId, portData, togglePort }) => {
-    console.log("MIDSPANID: ", midspanId, " PortID: ", portId);
+    //console.log("MIDSPANID: ", midspanId, " PortID: ", portId);
     const [modalOpen, setModalOpen] = useState(false);
     const [now, setNow] = useState(Date.now());
 
@@ -61,7 +61,7 @@ const POEPort = ({ midspanId, portId, portData, togglePort }) => {
     };
 
      const updateData = () => {
-        axios.post(`http://10.128.48.5:5001/control/${midspanId}/${portId}/get`)
+        axios.post(`http://10.128.48.5:5000/control/${midspanId}/${portId}/get`)
             .then(() => {
                 // Success message
                 console.log(`Successfully sent 'get' command to ${midspanId} port ${portId}`);
@@ -95,7 +95,7 @@ const POEPort = ({ midspanId, portId, portData, togglePort }) => {
             </Card>
 
             <Modal
-                title={`POE Port: ${midspanId} - ${portId} (last updated ${portData?.last_received ? timeSince(portData.last_received) : 'N/A'})`}
+                title={`${midspanId} - Port: ${portId} (last updated: ${portData?.last_received ? timeSince(portData.last_received) : 'N/A'})`}
                 open={modalOpen}
                 onCancel={closeModal}
                 footer={null}

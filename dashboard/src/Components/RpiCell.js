@@ -169,7 +169,7 @@ const RpiCell = ({ tile, wallName, updateTile, selectedDisplayField }) => {
             const cleanId =  tile.id.startsWith("rpi-") ? tile.id.replace(/^rpi-/, ""): tile.id;
 
             //await axios.post(`http://10.128.48.5:5000/control/${cleanId}/${command}`);
-            axios.post(`http://10.128.48.5:5001/control/${cleanId}/${command}`)
+            axios.post(`http://10.128.48.5:5000/control/${cleanId}/${command}`)
             .then(() => message.success(`Sent ${command} to ${cleanId}`))
             .catch(() => message.error(`Failed to send ${command}`));
             //message.success(`Sent ${command} to ${cleanId}`);

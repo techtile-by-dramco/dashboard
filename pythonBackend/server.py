@@ -3,6 +3,7 @@ from flask_cors import CORS
 from flask import make_response, request
 from flask_caching import Cache
 import os
+from concurrent.futures import ThreadPoolExecutor
 from numbers import Number
 import json
 import socket
@@ -44,6 +45,21 @@ PENDING_REQUESTS = {}
 LAST_SHUTDOWN = {}
 HOSTS_CACHE = None
 HOSTS_PATH = "/home/pi/TechtileDashboard/dashboard/public/hosts.yaml"
+
+def fetch_row(sql, values):
+    try:
+        # Create a new connection and cursor for each thread
+        conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute(sql, values)
+        result = cur.fetchone()
+        conn.close()
+        return result
+    except Exception as e:
+        print(f"[ERROR] Failed to execute query: {e}")
+        return None
+
 
 # load hosts.yaml file
 def load_hosts_yaml(path=HOSTS_PATH):
@@ -407,6 +423,82 @@ def db_latest():
 
 
 # server.py  (inside /db/latest/batch)
+#@app.route("/db/latest/batch", methods=["POST"])
+#def db_latest_batch():
+#    try:
+#        payload = request.get_json(force=True) or {}
+#        queries = payload.get("queries", [])
+#        out = []
+
+#        conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+#        conn.row_factory = sqlite3.Row
+#        cur = conn.cursor()
+#
+#        for q in queries:
+#            table = q.get("table", "")
+#            if not SAFE_TABLE.match(table):
+#                out.append({"table": table, "row": None, "error": "invalid table"})
+#                continue
+#
+#            filters = q.get("filters", {}) or {}
+#            clauses, values = [], []
+#            bad = False
+#            for k, v in filters.items():
+#                if not SAFE_COL.match(k):
+#                    out.append({"table": table, "row": None, "error": f"invalid filter key {k}"})
+#                    bad = True
+#                    break
+#                clauses.append(f"{k} = ?")
+#                values.append(v)
+#            if bad:
+#                continue
+#
+#            where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+#            sql = f"SELECT * FROM {table} {where} ORDER BY timestamp DESC LIMIT 1"
+#            try:
+#                cur.execute(sql, values)
+#                row = cur.fetchone()
+#                out.append({"table": table, "row": ({k: row[k] for k in row.keys()} if row else None)})
+#            except sqlite3.OperationalError as e:
+                # Most common: "no such table"
+#                out.append({"table": table, "row": None, "error": str(e)})
+
+#        conn.close()
+#        return jsonify({"results": out}), 200
+#    except Exception as e:
+#        return jsonify({"error": "db error", "details": str(e)}), 500
+
+'''@app.route("/db/latest/batch", methods=["POST"])
+def db_latest_batch():
+    try:
+        payload = request.get_json(force=True) or {}
+        queries = payload.get("queries", [])
+        out = []
+
+        # Use ThreadPoolExecutor for concurrent query execution
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = []
+            for q in queries:
+                table = q.get("table", "")
+                filters = q.get("filters", {}) or {}
+                clauses, values = [], []
+                for k, v in filters.items():
+                    clauses.append(f"{k} = ?")
+                    values.append(v)
+                where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+                sql = f"SELECT * FROM {table} {where} ORDER BY timestamp DESC LIMIT 1"
+                futures.append(executor.submit(fetch_row, sql, values))
+
+            # Collect results
+            for future in futures:
+                row = future.result()
+                if row:
+                    out.append({"table": table, "row": {k: row[k] for k in row.keys()} if row else None})
+
+        return jsonify({"results": out}), 200
+    except Exception as e:
+        return jsonify({"error": "db error", "details": str(e)}), 500'''
+    
 @app.route("/db/latest/batch", methods=["POST"])
 def db_latest_batch():
     try:
@@ -426,31 +518,43 @@ def db_latest_batch():
 
             filters = q.get("filters", {}) or {}
             clauses, values = [], []
-            bad = False
+            valid = True
+
             for k, v in filters.items():
                 if not SAFE_COL.match(k):
-                    out.append({"table": table, "row": None, "error": f"invalid filter key {k}"})
-                    bad = True
+                    out.append({
+                        "table": table,
+                        "row": None,
+                        "error": f"invalid filter key {k}"
+                    })
+                    valid = False
                     break
                 clauses.append(f"{k} = ?")
                 values.append(v)
-            if bad:
+
+            if not valid:
                 continue
 
             where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
             sql = f"SELECT * FROM {table} {where} ORDER BY timestamp DESC LIMIT 1"
+
             try:
                 cur.execute(sql, values)
                 row = cur.fetchone()
-                out.append({"table": table, "row": ({k: row[k] for k in row.keys()} if row else None)})
+                out.append({
+                    "table": table,
+                    "row": ({k: row[k] for k in row.keys()} if row else None)
+                })
             except sqlite3.OperationalError as e:
-                # Most common: "no such table"
                 out.append({"table": table, "row": None, "error": str(e)})
 
         conn.close()
+
         return jsonify({"results": out}), 200
+
     except Exception as e:
         return jsonify({"error": "db error", "details": str(e)}), 500
+
 
 def get_lan_ip():
     """
@@ -514,4 +618,4 @@ def add_cors_headers(resp):
 if __name__ == "__main__":
     #update_api_ip_in_yaml(get_lan_ip(), "/home/pi/TechtileDashboard/build/hosts.yaml")
     update_api_ip_in_yaml(get_lan_ip(), HOSTS_PATH)
-    app.run(host="0.0.0.0", port=5001)
+    app.run(host="0.0.0.0", port=5000)
