@@ -4,12 +4,31 @@ import PDUPort from "./PDUport";
 
 const PDUDevice = ({ PDUId, PDUData, ports, togglePort }) => {
     const { Panel } = Collapse;
-    const isOffline = PDUData?.data?.status?.value !== "active";
+    //const isOffline = PDUData?.data?.status?.value !== "active";
+    //console.log("---- PDUDevice render ----");
+    //console.log("PDUId:", PDUId);
+    //console.log("PDUData:", PDUData);
+    //console.log("deviceVoltage raw:", PDUData?.data?.deviceVoltage);
+    //console.log("deviceVoltage value:", PDUData?.data?.deviceVoltage?.value);
+    //console.log("parseFloat:", parseFloat(PDUData?.data?.deviceVoltage?.value));
+    const voltage = PDUData?.data?.deviceVoltage?.value;
+    const voltageValue = parseFloat(voltage);
+
+    const isActive =
+        !Number.isNaN(voltageValue) &&
+        voltageValue > 0;
+
+    //console.log("isActive:", isActive);
+
+
 
     return (
         <div style={{ marginBottom: "20px", border: "1px solid #ddd", padding: "10px", borderRadius: "8px" }}>
             <h2 style={{ textAlign: "center" }}>
-                {PDUId} {isOffline ? <span style={{ color: "red" }}>❌</span> : <span style={{ color: "green" }}>✅</span>}
+                {PDUId}{" "}
+                {isActive
+                ? <span style={{ color: "green" }}>✅</span>
+                : <span style={{ color: "red" }}>❌</span>}
             </h2>
 
             <Collapse defaultActiveKey={[]} style={{ width: "auto" }}>

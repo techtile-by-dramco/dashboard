@@ -12,17 +12,17 @@ import pingRpi from './Components/PingRpi';
 import GraphPage from "./Components/GraphPage";
 import MidspanDevice from "./Components/MidspanDevice";
 import PDUDevice from "./Components/PDUdevice";
-import Ceiling from './Views/Ceiling';  // Import the Ceiling view
-import Floor from './Views/Floor';  // Import the Ceiling view
-import WallEast from './Views/WallEast';  // Import the Ceiling view
-import WallWest from './Views/WallWest';  // Import the Ceiling view
+import Ceiling from './Views/Ceiling';  
+import Floor from './Views/Floor';  
+import WallEast from './Views/WallEast'; 
+import WallWest from './Views/WallWest'; 
 import axios from "axios"; 
 
 
 
 const { Header, Content, Footer } = Layout;
 
-const STALE_MS = 5 * 60 * 1000; // adjust if you like
+const STALE_MS = 5 * 60 * 1000; 
 
 function getRuntimeState(lastReceived, sourceObj) {
   if (!lastReceived) return "empty";
@@ -134,7 +134,6 @@ const poePortsReducer = (state, action) => {
     switch (action.type) {
         case 'UPDATE_POE_PORT':
             const { midspanId, portId, updates } = action.payload;
-            //console.log('Updating POE Port with data:', action.payload);  // Add this for debugging
 
             return {
                 ...state,
@@ -181,57 +180,40 @@ const poePortsReducer = (state, action) => {
     }
 };
 
-// PDU reducer for state management
 const pduReducer = (state, action) => {
-    switch (action.type) {
-
-        case 'UPDATE_PDU_PORT':{
-            const { pduId, portId, updates } = action.payload;
-            return {
-                ...state,
-                [pduId]: {
-                    ...state[pduId],
-                    [portId]: {
-                        ...(state[pduId]?.[portId] || {} ),
-                        ...updates,
-                        last_received: Date.now()
-                    }
-                }
-            };
+  switch (action.type) {
+    case 'UPDATE_PDU': {
+      const { pduId, updates } = action.payload;
+      return {
+        ...state,
+        [pduId]: {
+          ...state[pduId],
+          ...updates,
+          last_received: Date.now()
         }
-        case 'UPDATE_PDU':{
-            const { pduId, updates } = action.payload;
-            return {
-                ...state,
-                [pduId]: {
-                    ...state[pduId],
-                    ...updates,
-                    last_received: Date.now()
-                }
-            };
-        }
-
-        case 'INITIALIZE_PDU_PORTS':{
-            return {
-                ...state,
-                ...action.payload
-            };
-        }
-        case 'BULK_UPDATE_PDUS':{
-            const updatedState = { ...state };
-            action.payload.forEach(({ pduId, updates }) => {
-                updatedState[pduId] = {
-                    ...updatedState[pduId],
-                    ...updates,
-                    last_received: Date.now()
-                };
-            });
-            return updatedState;
-        }
-        default:
-            return state;
+      };
     }
+
+    
+
+    case 'BULK_UPDATE_PDUS': {
+      const next = { ...state };
+      action.payload.forEach(({ pduId, updates }) => {
+        next[pduId] = {
+          ...next[pduId],
+          ...updates,
+          last_received: Date.now()
+        };
+      });
+      return next;
+    }
+
+    default:
+      return state;
+  }
 };
+
+
 
 const pduPortReducer = (state, action) => {
   switch (action.type) {
@@ -239,12 +221,13 @@ const pduPortReducer = (state, action) => {
       // volledige init per PDU, zodat 1..8 altijd zichtbaar zijn
       return { ...state, ...action.payload };
     }
+    
     case 'UPDATE_PDU_PORT': {
       const { pduId, portId, updates } = action.payload;
       return {
         ...state,
         [pduId]: {
-          ...state[pduId],
+          ...(state[pduId] || {}),
           [portId]: {
             ...state[pduId]?.[portId],
             ...updates,
@@ -361,29 +344,6 @@ const Dashboard = ({viewMode, setViewMode}) => {
     }
   };
 
-
-    /*const [isRefreshingGlobal, setIsRefreshingGlobal] = useState(false);
-    useEffect(() => {
-      window.__isRefreshing = isRefreshingGlobal;
-    }, [isRefreshingGlobal]);
-
-
-     useEffect(() => {
-      if (window.__isRefreshing) return;  
-
-      const filteredTiles = filterTilesByViewMode();
-      setVisibleItems(filteredTiles.map(([tileId]) => tileId));
-    }, [viewMode, tiles]);*/
-
-   /* useEffect(() => {
-      // Mock fetching tiles data or use actual data from state
-      setTiles({
-        "A1": { walls: ["ceiling", "wallWest"], status: { value: "working" } },
-        "A2": { walls: ["ceiling"], status: { value: "faulty" } },
-        "B1": { walls: ["floor", "wallEast"], status: { value: "deactivated" } },
-      });
-    }, []);*/
-
     useEffect(() => {
         tilesRef.current = tiles;
     }, [tiles]);
@@ -416,7 +376,7 @@ function getRpiFromHosts(midspanId, portId) {
     if (rpiId) {
         return rpiId;
     }
-    console.warn(`No RPI found for Midspan: ${midspanId}, Port: ${portId} in poePortsDataRef`);
+    //console.warn(`No RPI found for Midspan: ${midspanId}, Port: ${portId} in poePortsDataRef`);
 
     for (const [rpiId, entry] of Object.entries(midspanConnections || {})) {
         const mid = entry?.midspan ?? entry?.vars?.midspan;
@@ -437,6 +397,8 @@ function applyResults(results) {
   const rpiCache = {};
   const midspanCache = {};
   const poePortCache = {}; // structure: poePortCache[mid][port] = {...}  
+  const pduCache = {}; // structure: poePortCache[mid][port] = {...}  
+  const pduPortCache = {}; // structure: poePortCache[mid][port] = {...}  
 
 
 
@@ -482,15 +444,46 @@ function applyResults(results) {
     console.warn("[cache:POE] read failed", e);
   }
 
+  // ---- PDU cache ----
+  try {
+    const existing = localStorage.getItem("pduCache");
+    if (existing) {
+      const items = JSON.parse(existing)?.items || [];
+      items.forEach((item) => {
+        if (item?.id) pduCache[item.id] = item;
+      });
+    }
+  } catch (e) {
+    console.warn("[cache:pdu] read failed", e);
+  }
+
+  // ---- PDU PORT cache ----
+  try {
+    const existing = localStorage.getItem("pduPortCache");
+    if (existing) {
+      const items = JSON.parse(existing)?.items || [];
+      items.forEach((entry) => {
+        const { id, port, data } = entry;
+        if (!id || !port) return;
+        if (!pduPortCache[id]) pduPortCache[id] = {};
+        pduPortCache[id][port] = entry;
+      });
+    }
+  } catch (e) {
+    console.warn("[cache:pdu Port] read failed", e);
+  }
+
 
   (results || []).forEach((r) => {
+    //console.log("[DEBUG applyResults] r.table =", r.table, r);
+
     const row = r.row;
     if (!row) return;
 
     const id = row.id || row.rpi_id || row.name;
     if (!id) return;
 
-    // --- RPI TILES APPLY RESULTS ---
+    // --- RPI TILES APPLY RESULTS ---f
     if (r.table === "rpi_ping") {
       const now = Date.now(); 
       const raw = String(row.status || "").toLowerCase();
@@ -565,8 +558,7 @@ function applyResults(results) {
       const now  = Date.now();
       const dbTs = Number(row.timestamp) || 0; 
       const uiTs = poePortsDataRef.current[mid]?.[port]?.last_received || 0;
-      //console.log("[PRINTED poeport: ", mid, " - ", port,  " - TIME dbTs]: ", dbTs); 
-      //console.log("[PRINTED poeport:  ", mid, " - ", port,  " - TIME uiTs]: ", uiTs);
+
 
       if (dbTs && dbTs <= uiTs) {   
         const existing = poePortsDataRef.current[mid]?.[port];
@@ -604,6 +596,67 @@ function applyResults(results) {
           poePortCache[mid][port] = { id: mid, port, data: update };
           return;
         }
+
+
+        // --- PDU APPLY RESULTS ---
+        if (r.table === "pdu_data") {
+          const dbTs = Number(row.timestamp) || 0;
+          const uiTs = pduDataRef.current[id]?.last_received ||    0;
+
+          if (dbTs && dbTs <= uiTs) {
+            return;
+          }
+
+          const devicePayload = {
+            id,
+            data: {
+              modelName:              { value: row.modelName, timestamp: now },
+              deviceCurrent:          { value: row.deviceCurrent, timestamp: now },
+              deviceVoltage:          { value: row.deviceVoltage, timestamp: now },
+              devicePower:            { value: row.devicePower, timestamp: now },
+              devicePowerDissipation: { value: row.devicePowerDissipation, timestamp: now },
+              inputMaxVoltage:        { value: row.inputMaxVoltage, timestamp: now },
+              inputMaxCurrent:        { value: row.inputMaxCurrent, timestamp: now },
+              powerCapacity:          { value: row.powerCapacity, timestamp: now },
+              source:                 { value: "db", timestamp: now }
+            },
+            last_received: now
+          };
+          updatePdu(id, devicePayload);
+          pduCache[id] = devicePayload;
+          return;
+        }
+
+        // --- PDU PORT APPLY RESULTS ---
+        if (r.table === "pdu_port") {
+          const pduId = r.pduId;
+          const port  = row.port;
+
+          if (!port) return;
+          const now  = Date.now();
+          const dbTs = Number(row.timestamp) || 0;
+          const uiTs = pduPortDataRef.current[pduId]?.[port]?.last_received || 0;
+
+          if (dbTs && dbTs <= uiTs) {
+            return;
+          }
+
+          const update = {
+            status:           {value: row.status ?? null, timestamp: now},
+            current:          { value: row.current ?? null, timestamp: now },
+            voltage:          { value: row.voltage ?? null, timestamp: now },
+            power:            { value: row.power ?? null, timestamp: now },
+            powerDissipation: { value: row.powerDissipation ?? null, timestamp: now },
+            source:           { value: "db", timestamp: now },
+          };
+           updatePduPort(pduId, port, update);
+
+          if (!pduPortCache[pduId]) pduPortCache[pduId] = {};
+          pduPortCache[pduId][port] = { id: pduId, port, data: update };
+
+          return;
+        }
+
       });
 
   try {
@@ -640,74 +693,33 @@ try {
   }
 
 
-}
-/*async function preloadEverythingFromDb12({
-  rpiIds = [],
-  midspanIds = [],
-  pduIds = [],
-  portCounts = {},       // ✔ ADD THIS
-  poePortCount = 24,     // fallback
-  pduPortCount = 8,
-  apiBase = "",
-}) {
-  try {
-    const base = apiBase && apiBase.length > 0
-      ? apiBase
-      : "http://10.128.48.5:5000";
-
-    // ----------- Build DB batch queries -----------
-    const queries = [];
-
-    // --- RPI ping ---
-    rpiIds.forEach(id => {
-      queries.push({
-        table: "rpi_ping",
-        filters: { id }
-      });
-    });
-
-    // --- Midspan device rows ---
-    midspanIds.forEach(id => {
-      queries.push({
-        table: "midspan_data",
-        filters: { id }
-      });
-    });
-
-    // --- Midspan port rows (per port) ---
-    midspanIds.forEach(id => {
-      const count = (portCounts && portCounts[mid]) || poePortCount;
-      for (let port = 1; port <= count; port++) {
-        queries.push({
-          table: "midspan_poeport",
-          filters: { id, port: String(port) }
-        });
-      }
-    });
-
-
-    // ----------- Perform batch DB request -----------
-    console.warn("[preload] sending batch query", queries.length);
-    const url = base + "/db/latest/batch";
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ queries })
-    });
-
-    const results = await response.json();
-    console.warn("[preload] batch results received:", results.length);
-
-    // ----------- Apply the results -----------
-    applyResults(results);
-
-  } catch (err) {
-    console.error("[preload] ERROR:", err);
+try {
+    localStorage.setItem(
+      "pduCache",
+      JSON.stringify({ ts: now, items: Object.values(pduCache) })
+    );
+  } catch (e) {
+    console.warn("[cache:PDU] write failed", e);
   }
+
+
+try {
+    const flat = [];
+    Object.entries(pduPortCache).forEach(([mid, ports]) => {
+      Object.values(ports).forEach((entry) => flat.push(entry));
+    });
+    localStorage.setItem(
+      "pduPortCache",
+      JSON.stringify({ ts: now, items: flat })
+    );
+  } catch (e) {
+    console.warn("[cache:PDU PORT] write failed", e);
+  }
+
 }
 
-*/
+
+
 async function preloadEverythingFromDb({
   rpiIds = [],
   midspanIds = [],
@@ -727,6 +739,8 @@ async function preloadEverythingFromDb({
      // Start measuring time
     const startTime = Date.now();
 
+
+
     // ------------------- 1) Fetch All RPIs in a single batch -------------------
     const url = base + `/db/latest/batch`;
 
@@ -735,21 +749,13 @@ async function preloadEverythingFromDb({
       filters: { id }
     }));
 
-    const requestDuration = Date.now() - startTime;
-    console.log(`[TIME 1] Fetch RPI batch request took ${requestDuration}ms`);
-
-    // Start timing for the request
-    const requestStartTime2 = Date.now();
-
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ queries })
     });
 
-    const requestDuration2 = Date.now() - requestStartTime2;
-    console.log(`[TIME 2] Fetch RPI batch request took ${requestDuration2}ms`);
-    const requestStartTime3 = Date.now();
+    
 
     const batchResults = await response.json();
     if (batchResults && batchResults.results && Array.isArray(batchResults.results)) {
@@ -762,10 +768,7 @@ async function preloadEverythingFromDb({
         console.error("Invalid response format:", batchResults);
     }
 
-    const requestDuration3 = Date.now() - requestStartTime3;
-    console.log(`[TIME 3] Fetch RPI batch request took ${requestDuration3}ms`);
-    
-
+    console.log("[preload] All RPIs processed.");
 
 
 
@@ -826,66 +829,51 @@ async function preloadEverythingFromDb({
     applyResults(MidspanResults); 
     }*/
 
-    // ------------------- 2 & 3 Midspans and PDU ports -----------------
+    // ------------------- 2) & 3) Midspans and POE ports -----------------
     for (const mid of midspanIds) {
         try {
-            // Fetch midspan data
             let url = `${base}/db/latest?table=midspan_data&id=${encodeURIComponent(mid)}`;
-            //console.log("[preload] starting fetch for midspan:", mid, "url:", url);
             let resp = await fetch(url);
-            //console.log("[preload] fetch completed for midspan:", mid, "status:", resp.status);
             let row = await resp.json();
-            //console.log("[preload] raw response text for midspan:", mid, row);
 
-            // Fallback if row is missing
             if (!row) {
                 url = `${base}/db/latest?table=midspan_data&id=${encodeURIComponent(mid)}&port=`;
                 resp = await fetch(url);
                 row = await resp.json();
             }
 
-            // Construct midspan data to apply
             const midspanData = {
                 id: row.id,
                 totalPowerConsumption: row.totalPowerConsumption || "N/A",
                 maxAvailablePowerBudget: row.maxAvailablePowerBudget || "N/A",
                 systemVoltage: row.systemVoltage || "N/A",
                 temperature: row.temperature || "N/A",
-                status: row.status || "inactive", // Default to "inactive" if no status is found
+                status: row.status || "inactive", 
                 timestamp: row.timestamp || "N/A",
             };
 
             // Apply results for the midspan data immediately
             if (row) {
                 applyResults([{ table: "midspan_data", row: midspanData }]);
-                //console.log("[ApplyResults] for midspan data", midspanData);
             }
 
         } catch (e) {
             console.warn("[preload] midspan GET failed for", mid, e);
         }
 
-        // ------------------- 2) Fetch PoE ports per midspan -------------------
+        // ------------------- PoE ports per midspan -------------------
         const count = portCounts[mid] || poePortCount;  // Get the number of ports for the current midspan
 
-        // Fetch data for each PoE port of the current midspan, one by one
         for (let port = 1; port <= count; port++) {
             try {
                 const p = new URLSearchParams({ id: mid, port: String(port) });
                 const url = `${base}/db/latest?table=midspan_poeport&${p.toString()}`;
 
-                //console.log("[preload] starting fetch for midspan-poeport:", mid, port, "url:", url);
                 const resp = await fetch(url);
-                //console.log("[preload] fetch completed for midspan-poeport:", mid, port, "status:", resp.status);
                 const row = await resp.json();
 
-                // Log the raw response if needed
-                //console.log("[preload] raw response text for midspan-poeport:", mid, port, row);
-
-                // If data is available, apply results for the current PoE port immediately
                 if (row) {
                     applyResults([{ table: "midspan_poeport", row, midspanId: mid }]);
-                    //console.log(`[ApplyResults] for midspan ${mid}, port ${port}`);
                 }
 
             } catch (e) {
@@ -896,333 +884,72 @@ async function preloadEverythingFromDb({
 
     console.log("[preload] All midspans and PoE ports processed.");
 
-    // ------------------- 4) Fetch PDUs individually -------------------
-    //for (const pdu of (pduIds || [])) {
-    //  try {
-    //    const url = `${base}/db/latest?table=pdu_data&pdu_id=${encodeURIComponent(pdu)}`;
-    //    const resp = await fetch(url);
-    //    const row = await resp.json();
-    //    if (row) allResults.push({ table: "pdu_runtime", row });
-    //  } catch (e) {
-    //    console.warn("[preload] PDU GET failed for", pdu, e);
-    //  }
-    //}
 
-    // ------------------- 5) Apply results -------------------
-    //console.log("[preload] total results fetched:", allResults.length);
-    //console.log("[preload] total results fetched:", allResults); 
-   //applyResults(allResults);
+
+    // ------------------- 5) & 6) PDU and PDU ports -----------------
+    for (const pd of pduIds) {
+         try {
+            let url = `${base}/db/latest?table=pdu_data&id=${encodeURIComponent(pd)}`;
+            let resp = await fetch(url);
+            let row = await resp.json();
+
+            if (!row) {
+                url = `${base}/db/latest?table=pdu_data&id=${encodeURIComponent(pd)}&port=`;
+                resp = await fetch(url);
+                row = await resp.json();
+            }
+
+
+            const pduData = {
+                id: row.id || "N/A",
+                modelName: row.modelName || "N/A",
+                deviceCurrent: row.deviceCurrent || "N/A",
+                deviceVoltage: row.deviceVoltage || "N/A",
+                devicePower: row.devicePower || "N/A",
+                devicePowerDissipation: row.devicePowerDissipation || "N/A", 
+                inputMaxVoltage: row.inputMaxVoltage || "N/A",
+                inputMaxCurrent: row.inputMaxCurrent || "N/A",
+                powerCapacity: row.powerCapacity || "N/A", 
+                timestamp: row.timestamp || "N/A",
+            };
+
+             if (row) {
+                applyResults([{ table: "pdu_data", row: pduData }]);
+             }
+
+        } catch (e) {
+            console.warn("[preload] PDU GET failed for", pd, e);
+        }
+
+        // ------------------- 2) Fetch PDU ports -------------------
+        const count = portCounts[pd] || pduPortCount;  
+        for (let port = 1; port <= count; port++) {
+            try {
+                const p = new URLSearchParams({ id: pd, port: String(port) });
+                const url = `${base}/db/latest?table=pdu_port&${p.toString()}`;
+                const resp = await fetch(url);
+                const row = await resp.json();
+ 
+                if (row) {
+                    applyResults([{ table: "pdu_port", row, pduId: pd }]);
+                 }
+
+            } catch (e) {
+                console.warn(`[preload] PDU port GET failed for PDU ${pd}, port ${port}`, e);
+            }
+        }
+    }
+
+    console.log("[preload] All PDU and PDU ports processed.");
+    
+    const requestDuration = Date.now() - startTime;
+    console.log(`[TIME] To load everything from database, and apply all results: ${requestDuration}ms`);
 
   } catch (err) {
     console.error("[preload] ERROR:", err);
   }
 }
 
-
-/*
-async function preloadEverythingFromDb1({
-  rpiIds = [],
-  apiBase = "",
-}) {
-  try {
-    const base = apiBase && apiBase.length > 0 
-      ? apiBase 
-      : "http://10.128.48.5:5000";
-
-    const requests = [];
-
-    // --- ONLY RPI ping rows (original logic) ---
-    (rpiIds || []).forEach((id) => {
-      const url = base + `/db/latest?table=rpi_ping&id=${encodeURIComponent(id)}`;
-      console.warn("[preload rpi] GET", url);
-      requests.push(
-        fetch(url)
-          .then(resp => resp.json())
-          .then(row => ({ table: "rpi_ping", row, id }))
-          .catch(err => {
-            console.warn("[preload rpi] failed for", id, err);
-            return null;
-          })
-      );
-    });
-
-    const results = (await Promise.all(requests)).filter(Boolean);
-    console.log("[preload rpi] done, results =", results.length);
-    applyResults(results);
-
-  } catch (err) {
-    console.error("[preload rpi] ERROR:", err);
-  }
-}
-*/
-/*
-async function preloadEverythingFromDb2({ rpiIds, midspanIds, pduIds, poePortCount = 8, pduPortCount = 8, apiBase ="" }) {
-        // POST a small slice of queries and return its results
-        async function postBatch(url, chunk, signal) {
-        const t0 = performance.now();
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ queries: chunk }), 
-          signal
-        });
-        const json = await res.json();
-        console.log("[DB preload] chunk", chunk.length, "returned", res.status, res.ok, "in", Math.round(performance.now() - t0), "ms");
-        return json?.results || [];
-      }
-
-function applyResults2(results) {
-  const now = Date.now();
-  (results || []).forEach(r => {
-    const row = r.row;
-    if (!row) return;
-    const ts = (Number(row.timestamp) || 0) * 1000 || now;
-
-    switch (r.table) {
-
-      case "rpi_ping": {
-        console.warn("### DEBUG ### applyResults rpi_ping", row);
-        const id = row.id;
-        const ts = (Number(row.timestamp) || 0) * 1000 || now;
-        const raw = String(row.status || "").toLowerCase();
-        const mapped = raw === "working" || raw === "alive" ? "working"
-                     : raw === "deactivated" ? "deactivated"
-                     : "faulty";
-        updateTile(id, {
-          status: { value: mapped, timestamp: ts },
-          last_received: ts
-        });
-        break;
-      }
-
-
-      case "rpi_data": {
-        const id = row.id;
-        const existing = (tilesRef.current[id]?.data) || {};
-        updateTile(id, {
-          data: {
-            ...existing,
-            cpuLoad:   { value: Number(row.cpuLoad),   timestamp: ts },
-            cpuTemp:   { value: Number(row.cpuTemp),   timestamp: ts },
-            ram:       { value: Number(row.ram),       timestamp: ts },
-            diskUsage: { value: Number(row.diskUsage), timestamp: ts },
-            source:    { value: "db", timestamp: ts }
-          },
-          last_received: ts
-        });
-        break;
-      }
-
-      case "midspan_data": {
-        const mid = row.id;
-        const port = row.port;
-        const updates = {};
-        for (const [k, v] of Object.entries(row)) {
-          if (!["id","midspan_id","port","timestamp"].includes(k)) {
-            updates[k] = { value: v, timestamp: ts };
-          }
-        }
-        if (port != null && `${port}`.trim() !== "") {
-          updatePoePort(mid, String(port), {
-            ...updates,
-            source: { value: "db", timestamp: ts },
-            last_received: ts
-          });
-        } else {
-          const existing = (midspanDataRef.current[mid]?.data) || {};
-          console.log("[DB preload] midspan_data device row", { mid, updates, raw: row });
-          updateMidspan(mid, {
-            data: { ...existing, ...updates, source: { value: "db", timestamp: ts } },
-            last_received: ts
-          });
-        }
-        break;
-      }
-
-      case "midspan_poeport": {
-        const mid = row.id;
-        const port = String(row.port);
-        const updates = {};
-        for (const [k, v] of Object.entries(row)) {
-          if (!["id","midspan_id","port","timestamp"].includes(k)) {
-            updates[k] = { value: v, timestamp: ts };
-          }
-        }
-        console.log("[DB preload] midspan_poeport row received", { mid, port, updates, raw: row });
-        updatePoePort(mid, port, {
-          ...updates,
-          source: { value: "db", timestamp: ts },
-          last_received: ts
-        });
-        break;
-      }
-
-      case "pdu_runtime": {
-        const pdu = row.pdu_id;
-        const existing = (pduDataRef.current[pdu]?.data) || {};
-        const kv = Object.fromEntries(
-          Object.entries(row)
-            .filter(([k]) => !["pdu_id", "timestamp"].includes(k))
-            .map(([k, v]) => [k, { value: v, timestamp: ts }])
-        );
-        updatePdu(pdu, { data: { ...existing, ...kv, source: { value: "db", timestamp: ts } } });
-        break;
-      }
-
-      case "pdu_ports": {
-        const pdu = row.pdu_id;
-        const port = row.port;
-        const updates = {};
-        Object.entries(row).forEach(([k, v]) => {
-          if (!["pdu_id", "port", "timestamp"].includes(k)) {
-            updates[k] = { value: v, timestamp: ts };
-          }
-        });
-        updatePduPort(pdu, port, { ...updates, source: { value: "db", timestamp: ts } });
-        break;
-      }
-      default:
-        break;
-    }
-  });
-}
-
-        const queries = [];
-
-        // RPis (topic table: rpi_data, filter: id)
-        //rpiIds.forEach(id => queries.push({ table: "rpi_data", filters: { id } }));
-        rpiIds.forEach(id => {
-            queries.push({ table: "rpi_data", filters: { id } });
-            queries.push({ table: "rpi_ping", filters: { id } });
-        });
-        // Midspans device-level (midspan_data with empty port)
-        midspanIds.forEach((mid) => {
-          queries.push({ table: "midspan_data", filters: { id: mid } }); 
-        });
-        console.log("[DB preload] queries built:", queries.filter(q => q.table==="midspan_poeport").slice(0,10));
-
-        midspanIds.forEach(mid => {
-          for (let port = 1; port <= poePortCount; port++) {
-            queries.push({ table: "midspan_poeport", filters: { id: mid, port: String(port) } });
-          }
-        });
-
-        console.log("[DB preload] queries built (poeport, first 10):",
-        queries.filter(q => q.table==="midspan_poeport").slice(0,10));
-
-        pduIds.forEach(pdu => queries.push({ table: "pdu_data", filters: { pdu_id: pdu } }));
-
-        try {
-          const url = apiBase ? `${apiBase}/db/latest/batch` : `/db/latest/batch`;
-          console.log("[DB preload] url:", url);
-          const poeQueries = queries.filter(q => q.table === "midspan_poeport");
-          console.log("[DB preload] building queries:", { all: queries.length, poe: poeQueries.length, samplePoe: poeQueries.slice(0, 10) });
-          console.log("[DB preload] about to fetch batch test:", url);
-          const CHUNK = 50;
-          let results = [];
-	 let batchWorked = true;
-	 for (let i = 0; i < queries.length; i += CHUNK) {
-	   const slice = queries.slice(i, i + CHUNK);
-           const controller = new AbortController();
-	   const timer = setTimeout(() => controller.abort(), 12000); // 4s per chunk
-  	   try {
-  	     const part = await postBatch(url, slice, controller.signal);
-   	     results = results.concat(part);
-             applyResults(part);
-
-  	   } catch (e) {
-  	     console.warn("[DB preload] chunk timed out/failed at", i, "size", slice.length, e?.name || e);
-               batchWorked = false;
-               break; // stop trying more chunks
-             } finally {
-               clearTimeout(timer);
-             }
-           }
-           batchWorked = false;
-if (!batchWorked) {
-  console.warn("### DEBUG ### ENTERED FALLBACK BLOCK");
-  console.warn("### DEBUG ### rpiIds =", rpiIds);
-  console.warn("### DEBUG ### poeQueries =", poeQueries);
-  // 1) midspan device rows (midspan_data) per midspanId
-  for (const mid of midspanIds) {
-    try {
-      // try without port first
-      let urlDev = `${apiBase ? apiBase : ""}/db/latest?table=midspan_data&id=${encodeURIComponent(mid)}`;
-      let resp = await fetch(urlDev);
-      let row = await resp.json();
-
-      // if null, also try explicit empty port (covers DBs that store "" in 'port')
-      if (!row) {
-        urlDev = `${apiBase ? apiBase : ""}/db/latest?table=midspan_data&id=${encodeURIComponent(mid)}&port=`;
-        resp = await fetch(urlDev);
-        row = await resp.json();
-      }
-
-      console.log("[DB preload] single GET midspan_data", { id: mid }, "→", resp.status);
-      applyResults([{ table: "midspan_data", row }]);
-    } catch (e) {
-      console.warn("[DB preload] single GET midspan_data failed for", mid, e);
-    }
-  }
-
-  // 2) PoE ports (what you already had)
-  for (const q of poeQueries) {
-    try {
-      const p = new URLSearchParams(q.filters);
-      const getUrl = `${apiBase ? apiBase : ""}/db/latest?table=midspan_poeport&${p.toString()}`;
-      const t0 = performance.now();
-      const r = await fetch(getUrl);
-      const row = await r.json();
-      console.log("[DB preload] single GET midspan_poeport", q.filters, "→", r.status, "in", Math.round(performance.now()-t0), "ms");
-      applyResults([{ table: "midspan_poeport", row }]);
-    } catch (e) {
-      console.warn("[DB preload] single GET midspan_poeport failed for", q.filters, e);
-    }
-  }
-
-  for (const id of rpiIds) {
-    try {
-      console.warn("### DEBUG ### requesting rpi_ping for", id);
-      const urlPing = `${apiBase ? apiBase : ""}/db/latest?table=rpi_ping&id=${encodeURIComponent(id)}`;
-      const resp = await fetch(urlPing);
-      const row = await resp.json();
-      console.log("[DB preload] single GET rpi_ping", { id }, "→", resp.status);
-      applyResults([{ table: "rpi_ping", row }]);
-    } catch (e) {
-      console.warn("[DB preload] single GET rpi_ping failed for", id, e);
-    }
-  }
-}
-
-          const poeResults = (results || []).filter(r => r.table === "midspan_poeport");
-          const poeNonNull = poeResults.filter(r => r.row);
-          const poeErrors  = poeResults.filter(r => r.error);
-          console.log("[DB preload] results summary:", {
-            total: results?.length,
-            poe: poeResults.length,
-            poeNonNull: poeNonNull.length,
-            poeErrorsSample: poeErrors.slice(0, 3)
-            });
-            if (poeNonNull[0]) {
-              console.log("[DB preload] first non-null poe row:", poeNonNull[0]);
-            }
-
-          try {
-            const testMid  = (poeResults[0]?.filters?.id)   || "midspan-001";
-            const testPort = (poeResults[0]?.filters?.port) || "5";
-            const testUrl  = `${apiBase ? apiBase : ""}/db/latest?table=midspan_poeport&id=${encodeURIComponent(testMid)}&port=${encodeURIComponent(testPort)}`;
-            const testRes  = await fetch(testUrl);
-            const testJson = await testRes.json();
-            console.log("[DB preload] direct GET test:", { url: testUrl, json: testJson });
-            } catch (e) {
-              console.warn("[DB preload] direct GET test failed:", e);
-            }
-
-          console.log("[DB preload] finished, current poePortsData:", poePortsDataRef.current);
-        } catch (e) {
-          console.warn("DB preload failed", e);
-        }
-      }*/
 
 const normalizeTileId = (id) => {
         const match = id.match(/^([A-Z])(\d+)$/i);
@@ -1280,6 +1007,8 @@ const getTilesByCategory = (categoryType, filterFn = () => true) => {
                 setApiBase(apiBaseStr);
                 const allCells = {};
                 const midspanConfig = data.all.vars.midspans;
+                const pduConfig = data.all.vars.pdus || {}; 
+
 
                 const midspanPortCounts = {};
                 for (const [midId, cfg] of Object.entries(midspanConfig || {})) {
@@ -1295,7 +1024,7 @@ const getTilesByCategory = (categoryType, filterFn = () => true) => {
                 console.log("[hosts] api_ip:", data?.all?.vars?.api_ip);
                 console.log("[hosts] rpi keys:", Object.keys(midspanConnectionsConfig || {}));
                 // peek at up to 3 host entries to see the shape (flat vs nested under vars)
-                Object.entries(midspanConnectionsConfig || {})
+                /*Object.entries(midspanConnectionsConfig || {})
                   .slice(0, 3)
                   .forEach(([rpiId, rpiData]) => {
                     console.log("[hosts] sample", rpiId, {
@@ -1305,28 +1034,46 @@ const getTilesByCategory = (categoryType, filterFn = () => true) => {
                       poeVars: rpiData?.vars?.["poe-port"],
                       midspanVars: rpiData?.vars?.["midspan"],
                     });
+                  });*/
+
+
+                  const pduPortsInit = {};
+                  const pduDevicesConfig = {};
+
+                  Object.entries(pduConfig).forEach(([pduId, cfg]) => {
+                    const count = cfg["nr-ports"] || 8;
+                    pduDevicesConfig[pduId] = { ports: Array.from({ length: count }, (_, i) => i + 1) };
+                    pduPortsInit[pduId] = {};
+                    for (let port = 1; port <= count; port++) {
+                      pduPortsInit[pduId][port] = {
+                        status: { value: "unknown", timestamp: 0 },
+                        current: null,
+                        voltage: null,
+                        power: null,
+                        powerDissipation: null,
+                        source: { value: "init", timestamp: 0 },
+                        last_received: 0
+                      };
+                    }
                   });
-
-
-
-
-                const fetchedWallNames = data.all.children.rpis.children;
-
-                // Initialize PoE ports from hosts so each port has its rpi before DB preload
-                const midspanPortsConfig = {};
-                /*Object.entries(midspanConnectionsConfig || {}).forEach(([rpiId, rpiData]) => {
-                  const poeInfo = rpiData["poe-port"];
-                  const midspanInfo = rpiData["midspan"];
-                  if (!poeInfo || !midspanInfo) return;
-
-                  if (!midspanPortsConfig[midspanInfo]) midspanPortsConfig[midspanInfo] = {};
-                  midspanPortsConfig[midspanInfo][poeInfo] = {
-                    power: "N/A",
-                    status: "unknown",
-                    voltage: "N/A",
-                    rpi: rpiId
+                  
+                const pduRuntimeInit = {};
+                Object.entries(pduDevicesConfig).forEach(([pduId]) => {
+                  pduRuntimeInit[pduId] = {
+                    data: {},          
+                    last_received: 0   
                   };
+                });
+
+                /*dispatchPdu({
+                  type: "BULK_UPDATE_PDUS",
+                  payload: Object.entries(pduRuntimeInit)
+                    .filter(([pduId]) => !pduDataRef.current[pduId])
+                    .map(([pduId, updates]) => ({ pduId, updates }))
                 });*/
+                
+                const fetchedWallNames = data.all.children.rpis.children;
+                const midspanPortsConfig = {};
 
                 Object.entries(midspanConnectionsConfig || {}).forEach(([rpiId, rpiData]) => {
                 const poeInfo = rpiData?.["poe-port"] ?? rpiData?.vars?.["poe-port"];
@@ -1341,13 +1088,17 @@ const getTilesByCategory = (categoryType, filterFn = () => true) => {
                   rpi: rpiId
                 };
               });
-                console.log("[midspanPortsConfig] built:", midspanPortsConfig);
                 dispatchPoePorts({
                   type: 'INITIALIZE_POE_PORTS',
                   payload: midspanPortsConfig
                 });
 
+                dispatchPduPorts({
+                  type: 'INITIALIZE_PDU_PORTS',
+                  payload: pduPortsInit
+                });
 
+            
                 // Process walls and segments using the same base cell data
                 Object.entries(data.all.children).forEach(([key, cellData]) => {
                     if (!cellData.hosts) return;
@@ -1370,7 +1121,6 @@ const getTilesByCategory = (categoryType, filterFn = () => true) => {
 		const testTiles = {};
 		if(data.all.children.tests?.hosts) {
 			const generatedTest = generateTiles("tests", data.all.children.tests.hosts);
-			console.log("generatedTiles output for test:", generatedTest);
 
 			Object.entries(generatedTest).forEach(([tileId, tileData]) => {
 				testTiles[tileId] ={
@@ -1380,31 +1130,21 @@ const getTilesByCategory = (categoryType, filterFn = () => true) => {
 				};
 			});
 		}
-		// Add test RPis as a new "test" wall group
-		//const testTiles ={};
-		//if (data.all.children.test?.hosts) {
-		//	Object.entries(generateTiles("test", data.all.children.test.hosts)).forEach(([tileId, tileData]) => {
-		//		testTiles[tileId] = {
-		//			...tileData,
-		//		walls: ["test"],
-		//		segments: []
-		//		};
-		//	});
-		//}
-                // Convert sets to arrays for easier rendering
-                Object.keys(allCells).forEach((cellKey) => {
-                    allCells[cellKey].walls = Array.from(allCells[cellKey].walls);
-                    allCells[cellKey].segments = Array.from(allCells[cellKey].segments);
-                });
 
-                // Initialize the tiles state with the processed cells
-                dispatchTiles({
-                    type: 'BULK_UPDATE_TILES',
-                    payload: Object.entries(allCells).map(([tileId, tileData]) => ({
-                        tileId,
-                        updates: tileData
-                    }))
-                });
+    // Convert sets to arrays for easier rendering
+    Object.keys(allCells).forEach((cellKey) => {
+        allCells[cellKey].walls = Array.from(allCells[cellKey].walls);
+        allCells[cellKey].segments = Array.from(allCells[cellKey].segments);
+    });
+
+    // Initialize the tiles state with the processed cells
+    dispatchTiles({
+        type: 'BULK_UPDATE_TILES',
+        payload: Object.entries(allCells).map(([tileId, tileData]) => ({
+            tileId,
+            updates: tileData
+        }))
+    });
 
 		dispatchTiles({
 			type: 'BULK_UPDATE_TILES', 
@@ -1450,7 +1190,7 @@ const getTilesByCategory = (categoryType, filterFn = () => true) => {
                     type: "BULK_UPDATE_TILES",
                     payload: updatesFromCache
                 });
-                console.warn(
+                console.log(
                     "[cache] restored",
                     updatesFromCache.length,
                     "tiles from cache after hosts init"
@@ -1479,7 +1219,7 @@ try {
       });
     });
 
-    console.warn(
+    console.log(
       `[cache] restored ${items.length} midspan device entries from cache`
     );
   }
@@ -1488,16 +1228,6 @@ try {
 }
 
 try {
-  /*const cached = localStorage.getItem("poePortCache");
-  if (cached) {
-    const items = JSON.parse(cached)?.items || [];
-    items.forEach((entry) => {
-      const { id, port, data } = entry;
-      updatePoePort(id, port, data);
-    });
-    console.warn("[cache] restored", items.length, "poe ports from cache");
-  }*/
-
     const cached = localStorage.getItem("poePortCache");
     if (cached) {
       const items = JSON.parse(cached)?.items || [];
@@ -1510,7 +1240,7 @@ try {
           //rpi: data?.rpi ?? rpiFromHosts ?? poePortsDataRef.current[id]?.[port]?.rpi ?? null
         });
       });
-      console.warn("[cache] restored", items.length, "poe ports from cache (with rpi fallback)");
+      console.log("[cache] restored", items.length, "poe ports from cache (with rpi fallback)");
     }
 
 
@@ -1519,11 +1249,44 @@ try {
 }
 
 
+try {
+  const cached = localStorage.getItem("pduCache");
+  if (cached) {
+    const items = JSON.parse(cached)?.items || [];
+    items.forEach(entry => {
+      if (!entry?.id) return;
+      updatePdu(entry.id, {
+        data: entry.data,
+        last_received: entry.last_received ?? Date.now()
+      });
+    });
+    console.log("[cache] restored", items.length, "PDUs");
+  }
+} catch (e) {
+  console.warn("[cache] failed to restore PDU cache", e);
+}
+
+try {
+  const cached = localStorage.getItem("pduPortCache");
+  if (cached) {
+    const items = JSON.parse(cached)?.items || [];
+    items.forEach(({ id, port, data }) => {
+      updatePduPort(id, port, { ...data });
+    });
+    console.log("[cache] restored", items.length, "PDU ports");
+  }
+} catch (e) {
+  console.warn("[cache] failed to restore PDU ports", e);
+}
+
+
+
+
                 //const pduDevicesConfig = {}
                 //const ports = [1, 2, 3, 4, 5];
                 //pduDevicesConfig["pdu-001"] = {"ports": ports}
                 //pduDevicesConfig["pdu-002"] = {"ports": ports}  // TODO: add ports to PDU's
-                const pduDevicesConfig = {};
+                /*const pduDevicesConfig = {};
                 const pduRuntimeInit = {};
                 const pduPortsInit = {};
 
@@ -1534,6 +1297,8 @@ try {
                     { id: "pdu-003", ports: [1,2,3,4,5,6,7,8]}
                 ];
 
+
+  
                 pduList.forEach(pdu => {
                     pduDevicesConfig[pdu.id] = { ports: pdu.ports };
                     pduRuntimeInit[pdu.id] = {
@@ -1546,21 +1311,19 @@ try {
                             status: { value: "unknown", timestamp: Date.now() }
                         };
                     });
-                });
+                });*/
 
-                // Dispatch initial PDU states
+                /*// Dispatch initial PDU states
                 dispatchPdu({
-                    type: 'BULK_UPDATE_PDUS',
-                    payload: Object.entries(pduRuntimeInit).map(([pduId, updates]) => ({
-                        pduId,
-                        updates
-                    }))
+                  type: 'BULK_UPDATE_PDUS',
+                  payload: Object.entries(pduRuntimeInit)
+                    .filter(([pduId]) => !pduDataRef.current[pduId])
+                    .map(([pduId, updates]) => ({ pduId, updates }))
                 });
-                dispatchPduPorts({
-                    type: 'INITIALIZE_PDU_PORTS',
-                    payload: pduPortsInit
-                });
+                */
+               
 
+                
                 setRpiCells(allCells);
                 setMidspans(midspanConfig);
                 setMidspanConnections(midspanConnectionsConfig)
@@ -1571,10 +1334,11 @@ try {
                 const rpiIds = [...Object.keys(allCells), ...Object.keys(testTiles)];
                 const midspanIds = Object.keys(midspanConfig || {});
                 const pduIds = Object.keys(pduDevicesConfig || {});
-
+                console.log("[preload] apiBase:", apiBaseStr);
                 console.log("[preload] rpiIds:", rpiIds);
                 console.log("[preload] midspanIds:", midspanIds);
-                console.log("[preload] apiBase:", apiBaseStr);
+                console.log("[preload] rpiIds:", pduIds);
+
                 //window.__isRefreshing = true;
 
                 await preloadEverythingFromDb({
@@ -2207,20 +1971,19 @@ useEffect(() => {
 
   const doRefresh = async () => {
 
-    //if (isRefreshing || cancelled) return;
-    //setIsRefreshingGlobal(true);
-    //isRefreshing = true;
-
     try {
       const rpiIds = Object.keys(rpiCells || {});
       const midspanIds = Object.keys(midspans || {});
+      const pduIds = Object.keys(pduDevices || {});
+      
       //window.__isRefreshing = true;     
-      console.log("TEST, this it debug code");
       await preloadEverythingFromDb({
           rpiIds,
           midspanIds,
+          pduIds,
           portCounts: midspanPortCountsState,
           poePortCount: 24,
+          pduPortCount: 8,
           apiBase
       });
 
@@ -2228,9 +1991,7 @@ useEffect(() => {
     } catch (err) {
       console.error("[refresh] ERROR", err);
     } finally {
-      //isRefreshing = false;
-      //setIsRefreshingGlobal(false);   // <--- Added
-      //window.__isRefreshing = false;
+      
     }
   };
 
@@ -2241,89 +2002,50 @@ useEffect(() => {
     clearInterval(interval);
   };
 }, [preloadComplete]);
-/*
+
 
 useEffect(() => {
-  if (!preloadComplete) return;
+    const cleanup = generateMockData({
+        "rpi/data": (data) => {
+            Promise.resolve().then(() => handleRpiMessage(data));
+        },
+        //"midspan/data": (data) => {
+        //    Promise.resolve().then(() => handleMidspanMessage(data));
+        //},
+        //"midspan/poeport": (data) => {
+        //    Promise.resolve().then(() => handlePOEPortMessage(data));
+        //},
 
-  let isRefreshing = false;
-  let cancelled = false;
+        "midspan/poeport/singlePortData": (data) => {
+            Promise.resolve().then(() => handlePOEPortMessage(data));
+        },
 
-  const doRefresh = async () => {
-    if (isRefreshing || cancelled) return;   // <-- prevents overlap
-    isRefreshing = true;
+          "midspan/poeport/state/#": (data) => 
+          Promise.resolve().then(() => handlePOEPortStatusMessage(data)),
 
-    try {
-      const rpiIds = Object.keys(rpiCells || {});
-      const midspanIds = Object.keys(midspans || {});
+        "midspan/data": () => {},
+        "midspan/poeport": () => {},
+        "pdu/data": () => {},
+        "pdu/port": () => {},
 
-      console.warn("[refresh] START", rpiIds.length, "RPIs");
+        //"pdu/data": (data) => {
+        //    Promise.resolve().then(() => handlePDUMessage(data));
+        //},
+        "server/data": (data) => {
+            Promise.resolve().then(() => handleServerMessage(data));
+        },
+        "experiment": (data) => {
+            Promise.resolve().then(() => handleStatusMessage(data));
+        },
+        //"pdu/port": (data) => {
+        //    Promise.resolve().then(() => handlePDUPortMessage(data));
+        //},
+    });
 
-      await preloadEverythingFromDb({
-        rpiIds,
-        apiBase,
-        midspanIds,
-        poePortCount: 24
-      });
+    return cleanup;
+}, []);
 
-      console.warn("[refresh] DONE");
 
-    } catch (err) {
-      console.error("[refresh] ERROR", err);
-    }
-
-    isRefreshing = false;
-  };
-
-  const interval = setInterval(doRefresh, 30000);
-  doRefresh(); // run once immediately
-
-  return () => {
-    cancelled = true;
-    clearInterval(interval);
-  };
-}, [preloadComplete, apiBase]);
-
-*/
-
-    useEffect(() => {
-        const cleanup = generateMockData({
-            "rpi/data": (data) => {
-                Promise.resolve().then(() => handleRpiMessage(data));
-            },
-            //"midspan/data": (data) => {
-            //    Promise.resolve().then(() => handleMidspanMessage(data));
-            //},
-            //"midspan/poeport": (data) => {
-            //    Promise.resolve().then(() => handlePOEPortMessage(data));
-            //},
-
-            "midspan/poeport/singlePortData": (data) => {
-                Promise.resolve().then(() => handlePOEPortMessage(data));
-            },
-
-             "midspan/poeport/state/#": (data) => 
-              Promise.resolve().then(() => handlePOEPortStatusMessage(data)),
-
-            "midspan/data": () => {},
-            "midspan/poeport": () => {},
-
-            "pdu/data": (data) => {
-                Promise.resolve().then(() => handlePDUMessage(data));
-            },
-            "server/data": (data) => {
-                Promise.resolve().then(() => handleServerMessage(data));
-            },
-            "experiment": (data) => {
-                Promise.resolve().then(() => handleStatusMessage(data));
-            },
-            "pdu/port": (data) => {
-                Promise.resolve().then(() => handlePDUPortMessage(data));
-            },
-        });
-
-        return cleanup;
-    }, []);
 /*  
 return (
     <GraphContext.Provider value={{ showGraphForTile }}>
@@ -2560,14 +2282,14 @@ return (
                             );
                         })}
 
-                    {Object.entries(pduData).map(([pduId, deviceData]) => (
-                        <PDUDevice
-                            key={pduId}
-                            PDUId={pduId}
-                            PDUData={deviceData}
-                            ports={pduPortData[pduId] || {}}
-                        />
-                    ))}
+                    {Object.keys(pduDevices).map((pduId) => (
+                    <PDUDevice
+                      key={pduId}
+                      PDUId={pduId}
+                      PDUData={pduData[pduId]}          // runtime info lives here once updates arrive
+                      ports={pduPortData[pduId] || {}}  // pre-inited, filled by DB/live later
+                    />
+                  ))}
                    </>
                  )}
 

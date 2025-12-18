@@ -30,6 +30,8 @@ const PDUPort = ({ PDUId, portId, portData }) => {
         return `${days} day${days !== 1 ? 's' : ''} ago`;
     };
 
+
+
    const getBackgroundColor = () => {
         const status = portData?.status?.value?.toLowerCase();
         switch (status) {

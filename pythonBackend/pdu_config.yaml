@@ -1,0 +1,55 @@
+# -------- different available midspans ---------
+pdus:
+  - id: pdu-001
+    host: 10.128.48.10
+    number_ports: 8
+  - id: pdu-002
+    host: 10.128.51.252
+    number_ports: 8
+  - id: pdu-003
+    host: 10.128.48.12
+    number_ports: 8
+
+
+# Defaults that apply to every midspan
+defaults:
+  pdu_ports: 8              # total PoE ports per midspan
+  snmp:
+    version: v2
+    read_community: LookVogelDP229
+    write_community: LookVogelDP229
+    timeout: 1.5
+    retries: 3
+  mqtt:
+    host: 10.128.48.5
+    port: 1883
+    qos: 1
+    retain: false
+    topic_device: pdu/data
+    topic_port: pdu/port
+
+# OIDs for all devices ---  
+oids:
+    device:
+        modelName:       ".1.3.6.1.4.1.21317.1.3.2.2.2.1.1.0"  #RETURNS: a name (PE8208G)
+        deviceCurrent:   ".1.3.6.1.4.1.21317.1.3.2.2.2.1.3.1.2.1"  #RETURNS: a number
+        deviceVoltage:      ".1.3.6.1.4.1.21317.1.3.2.2.2.1.3.1.3.1"  #RETURNS: a number
+        devicePower:    ".1.3.6.1.4.1.21317.1.3.2.2.2.1.3.1.4.1"  #RETURNS: a number
+        devicePowerDissipation: ".1.3.6.1.4.1.21317.1.3.2.2.2.1.3.1.5.1" #RETURNS: a number
+        inputMaxVoltage:   ".1.3.6.1.4.1.21317.1.3.2.2.2.1.3.1.6.1" #RETURNS: a number
+        inputMaxCurrent:   ".1.3.6.1.4.1.21317.1.3.2.2.2.1.3.1.7.1" #RETURNS: a number
+        powerCapacity:   ".1.3.6.1.4.1.21317.1.3.2.2.2.1.3.1.8.1" #RETURNS: a number
+        #sensor1Temperature: ".1.3.6.1.4.1.21317.1.3.2.2.2.1.4.1.2.1" #RETURNS: a number
+        #sensor1Humidity: ".1.3.6.1.4.1.21317.1.3.2.2.2.1.4.1.3.1" #RETURNS: a number
+        #sensor1Pressure: ".1.3.6.1.4.1.21317.1.3.2.2.2.1.4.1.4.1" #RETURNS: a number
+        #sensor2Temperature: ".1.3.6.1.4.1.21317.1.3.2.2.2.1.4.1.2.2" #RETURNS: a number
+        #sensor2Humidity: ".1.3.6.1.4.1.21317.1.3.2.2.2.1.4.1.3.2" #RETURNS: a number
+        #sensor2Pressure: ".1.3.6.1.4.1.21317.1.3.2.2.2.1.4.1.4.2" #RETURNS: a number
+
+    port:
+        status: ".1.3.6.1.4.1.21317.1.3.2.2.2.1.5.1.2.{port}" #RETURNS: 2 (on) or 1 (off)
+        current: ".1.3.6.1.4.1.21317.1.3.2.2.2.2.1.1.2.{port}" #RETURNS: a number
+        voltage: ".1.3.6.1.4.1.21317.1.3.2.2.2.2.1.1.3.{port}" #RETURNS: a number
+        power: ".1.3.6.1.4.1.21317.1.3.2.2.2.2.1.1.4.{port}" #RETURNS: a number
+        powerDissipation: ".1.3.6.1.4.1.21317.1.3.2.2.2.2.1.1.5.{port}" #RETURNS: a number
+

@@ -987,3 +987,14 @@ all:
         label: MS9
         nr-ports: 12
         type: PD-9612GC
+
+    pdus:
+      pdu-001:
+        nr-ports: 8
+        ip: 10.128.48.10
+      pdu-002:
+        nr-ports: 8
+        ip:  10.128.51.252
+      pdu-003:
+        nr-ports: 8
+        ip: 10.128.48.12
