@@ -1,0 +1,18 @@
+[Unit]
+Description=Python Backend API
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/TechtileDashboard/pythonBackend
+ExecStart=/home/pi/venv/bin/python /home/pi/TechtileDashboard/pythonBackend/server.py
+Restart=always
+Environment="PATH=/home/pi/venv/bin"
+Environment="PYTHONUNBUFFERED=1"
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
