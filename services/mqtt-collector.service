@@ -1,0 +1,23 @@
+[Unit]
+Description=Raspberry Pis MQTT Monitor
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/home/pi/venv/bin/python /home/pi/TechtileDashboard/pythonBackend/rpi_db.py
+WorkingDirectory=/home/pi/TechtileDashboard/pythonBackend
+User=pi
+Restart=always
+RestartSec=5
+
+# Ensures the environment uses venv paths
+Environment="PATH=/home/pi/venv/bin"
+# Optional: Prevents buffering of Python output
+Environment="PYTHONUNBUFFERED=1"
+
+# Output logs to journalctl (default behavior)
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
