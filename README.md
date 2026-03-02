@@ -1,4 +1,5 @@
-# TechtileDashboard Firmware
+# 🚀 Installation Guide
+
 ## PART 1 - RPI and SSH connection
 ### 0️⃣ Update the System and install required packages
 On the Raspberry Pi:
@@ -45,7 +46,50 @@ You should see the repository structure:
 - dashboard/        (Node frontend)
 - pythonBackend/    (Python backend)
 
-## PART 2 – Setup Python Backend
+## PART 2 – Install Mosquitto (Mosquito.service) (REQUIRED)
+TechtileDashboard depends on MQTT for:
+- Live RPI updates
+- Midspan data
+- PoE control
+- PDU control
+- Experiment status
+
+Without Mosquitto, the dashboard will not function properly.
+
+### Install Mosquitto
+```
+sudo apt update
+sudo apt install mosquitto mosquitto-clients -y
+```
+### Verify installation
+´´´
+systemctl status mosquitto
+´´´
+### Enable Mosquitto at Boot
+```
+sudo systemctl enable mosquitto
+sudo systemctl start mosquitto
+```
+
+## PART 3 – Install SSH (ssh.service) (REQUIRED)
+TechtileDashboard depends on SSH for:
+- Remote SSH login into your Raspberry Pi
+- ssh pi@<ip>
+- Git over SSH
+- Remote management
+
+### Install SSH
+```
+sudo apt install openssh-server
+```
+
+### Enable Mosquitto at Boot
+```
+sudo systemctl enable ssh
+sudo systemctl start ssh
+```
+
+## PART 4 – Setup Python Backend
 The important files for the backend are inside:
 ```
 cd pythonBackend
@@ -159,3 +203,44 @@ sudo systemctl restart rpi-control.service
 
 - Verify start after reboot (if service is enabled)
 ```sudo reboot```
+
+
+## PART 5 – Setup Python Frontend/Dashboard
+The important files for the frontend are inside:
+```
+cd dashboard/src
+```
+### Install + run in dev mode (quick test)
+Install node:
+```
+node -v
+npm -v
+```
+Test React manaully (no service yet)
+```
+cd ~/TechtileDashboard/dashboard
+npm install
+npm start
+```
+
+Open in Browser: ``` http://10.128.48.5:3000/ ```
+
+Stop it with: ```Ctrl+C```
+
+### Create react-app.service
+
+```
+sudo nano /etc/systemd/system/react-app.service
+# Copy past content form the react-app.service file on Github
+# Save and exit .service file
+sudo systemctl daemon-reload
+sudo systemctl enable react-app.service
+sudo systemctl start react-app.service
+systemctl status react-app.service
+```
+
+Check the logs if it fails
+```
+journalctl -u react-app.service -f
+
+
