@@ -84,6 +84,7 @@ python server.py
   - rpis_control.py --> run by **rpis_control.service**
   - pdu_control.py --> run by **pdu_control.service**
   - midspan_control.py --> run by **midspans_control.service**
+  - rpi_db.py --> run by **mqtt-collector.service** 
   
 - Install libraries when errors appear
 - Stop with:
@@ -137,7 +138,18 @@ sudo systemctl start midspans_control.service
 systemctl status midspans_control.service
 ```
 
+5.5 mqtt-collector.service
+```
+sudo nano /etc/systemd/system/mqtt-collector.service
+# Copy past content form the mqtt-collector.service file on Github
+# Save and exit .service file
+sudo systemctl daemon-reload
+sudo systemctl enable mqtt-collector.service
+sudo systemctl start mqtt-collector.service
+systemctl status mqtt-collector.service
+```
 
+5.6 Troubleshoot (if necessary)
 - Restart after changes:
 
 ```
