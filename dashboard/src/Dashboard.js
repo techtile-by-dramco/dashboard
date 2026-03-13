@@ -2165,7 +2165,7 @@ return (
                   {viewMode === "ceiling" && <Ceiling tiles={tiles} />}
                   {viewMode === "floor" && <Floor tiles={tiles} />}
                   {viewMode === "wallEast" && <WallEast tiles={tiles} />}
-                  {viewMode === "wallWest" && <wallWest tiles={tiles} />}
+                  {viewMode === "wallWest" && <WallWest tiles={tiles} />}
                   {viewMode === "walls" && Object.entries(walls)
                         .filter(([name]) => visibleItems.includes(name) && name !== "tests")
                         .map(([wallName, wallData]) => (
